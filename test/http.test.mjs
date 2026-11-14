@@ -27,6 +27,17 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
   }
   const agentA = makeAgent('session-a')
   const agentB = makeAgent('session-b')
+  const agentOrg = makeAgent('session-org')
+  const subagents = {
+    list: () => ['in-process'],
+    async start(name, request) {
+      return {
+        id: 'sub-session',
+        result: Promise.resolve({ output: [{ type: 'text', text: 'delegated result' }], stopReason: 'completed' }),
+        async dispose() {},
+      }
+    },
+  }
   const commands = []
   const ctx = {
     agents: { list: () => [...agents.values()], get: (id) => agents.get(id) },
@@ -50,9 +61,11 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
     },
     on: () => () => {},
     get: (name) => {
+      if (name === 'agents') return ctx.agents
+      if (name === 'subagents') return subagents
       if (name !== 'sessionController') return undefined
       return {
-        async list() { return { items: [{ sessionId: 'session-a' }, { sessionId: 'session-b' }] } },
+        async list() { return { items: [{ sessionId: 'session-a' }, { sessionId: 'session-b' }, { sessionId: 'session-org' }] } },
         async prompt(request, signal) {
           if (!signal) throw new Error('prompt requires a signal');
           prompts.push(request);
@@ -62,7 +75,7 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
     },
   }
 
-  const dispose = apply(ctx, { dataFile: join(dir, 'groups.json'), historyLimit: 50, sendCooldownMs: 0, dedupeWindowMs: 0, dailyMessagesPerSender: 1 })
+  const dispose = apply(ctx, { dataFile: join(dir, 'groups.json'), historyLimit: 50, sendCooldownMs: 0, dedupeWindowMs: 0, dailyMessagesPerSender: 1, allowAgentDelegate: true, maxDelegationsPerDay: 2 })
   await new Promise((resolve) => setImmediate(resolve))
   assert.equal(registered.length, 1)
   assert.equal(registered[0].path, '/api/group-talk-l')
@@ -174,6 +187,28 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
   }))
   assert.equal(humanTarget.status, 400)
   assert.equal((await humanTarget.json()).error.code, 'self-target')
+
+  const delegateCreate = await route.fetch(new Request('http://localhost/api/group-talk-l', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'create',
+      name: 'Delegate room',
+      members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
+    }),
+  }))
+  assert.equal(delegateCreate.status, 200)
+  const delegateGroup = (await delegateCreate.json()).group
+  const delegated = await route.fetch(new Request('http://localhost/api/group-talk-l', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'delegate', group: delegateGroup.id, task: 'research this' }),
+  }))
+  assert.equal(delegated.status, 200)
+  assert.equal((await delegated.json()).outcome, 'completed')
+  const afterDelegate = await route.fetch(new Request('http://localhost/api/group-talk-l', { method: 'GET' }))
+  const delegateView = (await afterDelegate.json()).groups.find((group) => group.id === delegateGroup.id)
+  assert.ok(delegateView.messages.some((message) => message.kind === 'control' && message.action === 'delegate'))
 
   const wrongType = await route.fetch(new Request('http://localhost/api/group-talk-l', {
     method: 'POST',

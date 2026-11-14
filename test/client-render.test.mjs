@@ -200,7 +200,7 @@ test('the group detail renders members, messages, version and owner controls', (
   assert.ok(strings.includes('Ready for review.'))
   assert.ok(strings.includes('dissolve'))
   assert.ok(strings.includes('send'))
-  assert.ok(strings.includes('Group-Talk-L v1.5.0'))
+  assert.ok(strings.some((value) => value.includes('Host 1.5.0')))
 })
 
 test('the create screen renders its session picker and owner fields', () => {
