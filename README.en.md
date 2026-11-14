@@ -1,6 +1,6 @@
 # Group-Talk-L · Cross-session group chat
 
-[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **85 tests** · DeepSeek Harness Host + Web Client plugin
+[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **87 tests** · DeepSeek Harness Host + Web Client plugin
 
 Group-Talk-L lets the person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model, and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
@@ -83,7 +83,7 @@ The organizer/host uses `group_talk_delegate`; the Host starts the child under t
 
 ```bash
 npm test
-# 85 tests, 0 failures
+# 87 tests, 0 failures
 ```
 
 Coverage includes persistence, corruption, routing, roles, human in-room/priority, secretary notes, delegation role/depth/tool-filter/timeout/quota/dispose, control persistence, client rendering, concurrency and budgets. See [SECURITY.md](SECURITY.md).
