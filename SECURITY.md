@@ -1,6 +1,6 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：2.1.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本、人类优先、秘书/组织者、子代理委派。
+> 版本：2.2.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本、人类优先、秘书/组织者、子代理委派、发送门槛。
 >
 > 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
@@ -223,6 +223,7 @@ Group-Talk-L 的每个群消息都可能：
 | `protection.test.mjs` | 基线放大、fan-out、冷却、去重、sender/target/group/token 预算、群膨胀、prompt/历史/UI 上限、账本持久化 |
 | `security.test.mjs` | 目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、0600/0700 |
 | `security-2.test.mjs` | 人类优先、秘书/安全主管角色、委派角色/深度/工具过滤/配额/`dispose`、control 持久化、priority |
+| `host.test.mjs` | 非 organizer 的 `group_talk_send` 无 `purpose` 被拒绝；organizer/owner 豁免 |
 | `config.test.mjs` | 默认值、steer、burst/host 限值与非法值回退 |
 
 正式启用前检查：

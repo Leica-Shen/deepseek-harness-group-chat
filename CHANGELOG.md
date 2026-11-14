@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.2.0
+
+- **Collapsible navigation and members.** The whole left group list can be
+  hidden (not just its rows), and the participant list has its own collapse
+  control. Both free vertical/horizontal space for the transcript and composer.
+- **Send gate.** Non-organizer/owner members must send with
+  `purpose=verify|correct|review|anomaly`; status, acknowledgement and chatter
+  are rejected by the Host. Organizer/owner/human are exempt. This prevents
+  routine cross-session wakeups and group spam.
+- **Version:** 2.2.0.
+
 ## 2.1.0
 
 - **Human priority.** Messages from the human operator are marked as user
@@ -28,8 +39,8 @@
   the current step/turn first, do not change the plan) or `urgent` (next step
   boundary). The panel no longer offers `queue`; the advanced `mode` remains.
 - **Tests.** 85 tests, including human priority, secretary notes, delegation
-  role/quota/depth/tool-filter/disposal, control persistence and client
-  rendering.
+  role/quota/depth/tool-filter/disposal, control persistence, client rendering
+  and the send-purpose gate.
 - `README.en.md` added; SECURITY/DESIGN extended for delegation and human
   priority.
 

@@ -1,6 +1,6 @@
-# Group-Talk-L UI acceptance matrix (2.1)
+# Group-Talk-L UI acceptance matrix (2.2)
 
-Use this after restarting Harness so the **2.1 Host** (capabilities present) is live. Until then the Host is 2.0.3: priority is capability-disabled and real delegation cannot run.
+Use this after restarting Harness so the **2.2 Host** (capabilities present) is live. Until then the Host is 2.0.3: priority is capability-disabled and real delegation cannot run.
 
 ## Scope clarification
 
@@ -26,14 +26,14 @@ Use this after restarting Harness so the **2.1 Host** (capabilities present) is 
 - `展开全文` is a native button with visible `:focus-visible` inner outline; toggling keeps `.messages` scrollTop; `复制全文` copies `fullText` (not the truncated 600 chars).
 - No horizontal overflow at ~980 px / 125% / 150%.
 - Audit control rows show `审计记录 · 非指令`; the read-only delegation log shows taskId + started/completed/failed.
-- 2.0.3: priority selector disabled + `当前 Host 不支持 priority` hint; 2.1: enabled, no hint.
+- 2.0.3: priority selector disabled + `当前 Host 不支持 priority` hint; 2.2: enabled, no hint.
 - Long alias does not push role tag/actions out; role tags distinguish Organizer / Security Lead / Secretary.
 
 ## Capture (manual, no AppleScript)
 
 Previous drafts used `osascript ... set size`, which is blocked by System Events permissions on some machines and is not reproducible. Use the UI:
 
-1. Restart Harness so the version line shows `Group-Talk-L 2.1.0` and the Host warning is gone.
+1. Restart Harness so the version line shows `Group-Talk-L 2.2.0` and the Host warning is gone.
 2. Open **Group chat** from the sidebar (or the session header).
 3. Drag the window's right edge until the content area is about 980 px wide. Exact pixel width is not required; record the approximate width in the filename or note.
 4. Zoom with the app's **View** menu or the standard shortcuts:
@@ -44,15 +44,15 @@ Previous drafts used `osascript ... set size`, which is blocked by System Events
 5. Capture the window:
    - `Cmd Shift 4`, then Space, then click the Harness window, **or**
    - `screencapture -x /tmp/group-talk-ui-acceptance.png` for the full screen.
-6. Save under `评审证据/ui-2.1/` with a name that includes host/client version and zoom, e.g. `980-125-host2.1.0-client2.1.0.png`. The 2.0.3 capability-disabled baseline belongs in `评审证据/ui-2.0.3/`, not mixed into `ui-2.1/`.
+6. Save under `评审证据/ui-2.2/` with a name that includes host/client version and zoom, e.g. `980-125-host2.2.0-client2.2.0.png`. The 2.0.3 capability-disabled baseline belongs in `评审证据/ui-2.0.3/`, not mixed into `ui-2.2/`.
 7. Generate one `<screenshot>.evidence.json` beside each screenshot with the helper (no AppleScript):
 
 ```bash
 cd /Users/Leica_Shen/Desktop/Create/group-talk-l
 node scripts/evidence.mjs \
-  --dir ../评审证据/ui-2.1 \
-  --screenshot 980-125-host2.1.0-client2.1.0.png \
-  --host 2.1.0 \
+  --dir ../评审证据/ui-2.2 \
+  --screenshot 980-125-host2.2.0-client2.2.0.png \
+  --host 2.2.0 \
   --window 980 \
   --zoom 1.25 \
   --capabilities '{"inRoom":true,"priority":true,"control":true,"delegate":true}' \
@@ -62,6 +62,6 @@ node scripts/evidence.mjs \
 For the 2.0.3 baseline use `--dir ../评审证据/ui-2.0.3`, `--host 2.0.3`, and `--capabilities none` (the GET response has no capabilities). The helper reads the client version from `package.json`, the commit from `git rev-parse --short HEAD`, and writes `{commit, hostVersion, clientVersion, capabilities, windowWidth, zoom, timestamp, screenshot, notes}` as `<screenshot>.evidence.json` — one file per screenshot, so a matrix directory cannot overwrite earlier records.
 8. Restore zoom with `Cmd 0` and restore the window size by dragging.
 
-The panel version line shows client + host. For the exact `capabilities`, open DevTools → Network → the `GET /api/group-talk-l` response (2.0.3 has no `capabilities` key; 2.1 returns `{inRoom, priority, control, delegate}`). Do not hand-edit values to match a desired result; the evidence file must reflect what the page actually returned.
+The panel version line shows client + host. For the exact `capabilities`, open DevTools → Network → the `GET /api/group-talk-l` response (2.0.3 has no `capabilities` key; 2.2 returns `{inRoom, priority, control, delegate}`). Do not hand-edit values to match a desired result; the evidence file must reflect what the page actually returned.
 
 Do not edit `groups.json` to fabricate delegation rows for a screenshot: the audit view must reflect a real organizer run, otherwise the evidence is invalid. Do not use `osascript` to resize the window or click controls; the acceptance doc must be runnable without System Events permissions.

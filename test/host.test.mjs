@@ -123,13 +123,24 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
 
   const sendTool = tools.get('session-a:group_talk_send')
   const sent = await sendTool.execute(
-    { target: '@bob', message: 'Please review the diff.' },
+    { target: '@bob', message: 'Please review the diff.', purpose: 'review' },
     { agent: agentA },
   )
   assert.equal(sent.deliveries[0].status, 'delivered')
   assert.equal(prompts.length, 1)
   assert.equal(prompts[0].sessionId, 'session-b')
   assert.match(prompts[0].content[0].text, /Please review the diff\./)
+
+  const sendToolB = tools.get('session-b:group_talk_send')
+  await assert.rejects(
+    () => sendToolB.execute({ target: '@alice', message: 'status: working' }, { agent: agentB }),
+    /purpose=verify|review\/comment|purpose-required/i,
+  )
+  const reviewed = await sendToolB.execute(
+    { target: '@alice', message: 'One review comment.', purpose: 'review' },
+    { agent: agentB },
+  )
+  assert.equal(reviewed.deliveries[0].status, 'delivered')
 
   const dissolved = await handler({ agent: agentA, rawInput: ' dissolve' })
   assert.equal(dissolved.kind, 'success')

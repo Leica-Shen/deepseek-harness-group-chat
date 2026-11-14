@@ -4,6 +4,13 @@
 
 Group-Talk-L lets the person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model, and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
+## What is new in 2.2
+
+- **Collapse the whole group list.** The left group column can be hidden completely; the main information area takes the full width. Reopen it from the main header/page header.
+- **Collapse the participant list.** The member section gets a collapse control; hiding it gives the transcript/composer the full height. The member list still scrolls independently when open.
+- **Send gate.** Non-organizer/owner members must pass `purpose=verify|correct|review|anomaly` to `group_talk_send`; status, acknowledgements and chatter are rejected by the Host. Organizer/owner/human are exempt. This stops cross-waking and group spam.
+- **Version:** 2.2.0.
+
 ## What is new in 2.1
 
 - **Human priority.** Human messages are delivered as user instructions (`priority: "human"`), not untrusted peer content. They bypass a target's cooldown and target daily caps (group/Host budgets remain), and the panel shows every failure and audit entry.
@@ -14,7 +21,7 @@ Group-Talk-L lets the person talk to **existing agent sessions** as a group with
 - **Panel stability.** The group list is a flat, expandable conversation list with last-message previews. "Keep open" restores the room after a new message auto-switches the shell, while an explicit click or "Back to chat" clears the pin. A panel-level error boundary prevents a render failure from dropping the person into a conversation. Drafts and the selected room are restored.
 - **Visual cleanup.** Flat list rows instead of cards, clearer role/member rows, audit/delegation actions, control rows, empty-room creation, a proper composer placeholder, and theme-token-based colors.
 
-## Explicit non-goals in 2.1
+## Explicit non-goals in 2.2
 
 - No automatic relay of ordinary assistant answers.
 - No silent interrupt/cancel yet: delivery is still `steer` at the next step boundary; priority tells the target whether it may change its current plan. `interrupt`, `ack/supersede` are the 2.2 control-layer candidates.
