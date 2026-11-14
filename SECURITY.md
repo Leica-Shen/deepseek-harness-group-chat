@@ -1,7 +1,7 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：1.4.2  
-> 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。  
+> 版本：1.5.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。
+>
 > 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
 ## 1. 调查目标
@@ -118,7 +118,7 @@ Group-Talk-L 的每个群消息都可能：
 - Web 列表：`uiMessageLimit = 20`，每群最多返回 20 条；
 - 工具历史：`maxHistoryToolChars = 12000`，按最新优先裁剪，超长正文标记 `truncated`；
 - 2000 字正文的 JSON envelope 约 2,487 字符；正文受 `maxMessageChars = 2000` 限制；
-- Web 轮询 8 秒一次，`document.hidden` 时暂停。
+- Web 面板轮询 8 秒一次，`document.hidden` 时暂停；面板关闭时页头另有一次 60 秒的未读轮询（只读 GET，不产生模型 turn）。
 
 ### 4.7 群膨胀
 
@@ -191,7 +191,7 @@ Group-Talk-L 的每个群消息都可能：
    普通 assistant 回答不会自动中继，必须显式调用 `group_talk_send`。这是有意设计：自动转发 assistant 内容可能泄露工具输出、私有上下文或推理结果，并形成循环；面板会显示「等待回复」。
 
 8. **UI 轮询**  
-   8 秒间隔不是实时；牺牲时效换取更低的读取频率。
+   面板 8 秒、页头未读 60 秒，都不是实时；牺牲时效换取更低的读取频率。未读水位只存本机，不上报 Host。
 
 9. **侧栏快捷图标是 DOM 装饰**  
    上游侧栏没有 additive slot，图标通过 `sectionLabel` / `sectionHeader` 类名和「工作区」文本定位。若 DSH 改版这些 DOM 约定，图标会安全消失（不会报错），核心入口与 `/group` 命令仍可用。
@@ -209,7 +209,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 54 个测试：
+当前 60 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -220,7 +220,7 @@ Group-Talk-L 的每个群消息都可能：
 | `host.test.mjs` | Host 挂载、scoped 安装/卸载 |
 | `http.test.mjs` | 认证 Fetch 路由、429、limits/usage |
 | `client.test.mjs` | bundle 装载与 slot |
-| `client-render.test.mjs` | 空态/详情/创建页渲染 |
+| `client-render.test.mjs` | 空态/详情/创建页渲染、等待推导、未读计数与已读水位 |
 | `sidebar.test.mjs` | 「工作区」右侧快捷图标的 DOM 注入与点击意图 |
 | `protection.test.mjs` | 基线放大、fan-out、冷却、去重、sender/target/group/token 预算、群膨胀、prompt/历史/UI 上限、账本持久化 |
 | `security.test.mjs` | 目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、0600/0700 |
@@ -228,7 +228,7 @@ Group-Talk-L 的每个群消息都可能：
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：54/54 通过；
+- [x] `node --test test/*.test.mjs`：60/60 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -271,7 +271,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **54 个测试全绿**。
+新增测试后 **60 个测试全绿**。
 
 ### 真实对话验收
 
@@ -284,12 +284,12 @@ Group-Talk-L 的每个群消息都可能：
 
 ### 剩余风险 / 待重启项
 
-- 当前 Host 进程仍运行安装前的 1.3 模块；源码、测试与 GitHub `v1.4.2` 已包含 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、群聊徽标、读取限速与 `group_talk_list` JSON 修复。**下一次 Harness 重启后加载到 live**。新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”；当前群消息足够，实测列表可用；
+- 当前 Host 进程仍运行安装前的 1.3 模块；源码与测试（本地 `v1.5.0`）已包含 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、群聊徽标、读取限速与 `group_talk_list` JSON 修复。**下一次 Harness 重启后加载到 live**。新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”；当前群消息足够，实测列表可用；
 - `computer-use` 在热重载期间仍报 duplicate service；这是独立插件的非幂等注册问题，重启后确认；
 - 侧栏图标是 DOM 装饰，上游改版时可能安全消失；页头入口和 `/group` 命令不受影响；
 - 其余残余风险见第 6 节。
 
-当前结论：**真实双会话投递与双向对话、页头和侧栏入口均已验证；源码、测试与 GitHub v1.4.2 已就绪。live Host 仍运行旧模块，重启后启用 1.4.2 的全部新防护与 UI；在那之前不能宣称 live 已完全升级。**
+当前结论：**真实双会话投递与双向对话、页头和侧栏入口均已验证；源码与测试（本地 v1.5.0）已就绪。live Host 仍运行旧模块，重启后启用 1.4.2/1.5.0 的全部新防护与 UI；在那之前不能宣称 live 已完全升级。**
 ## 10. 结论
 
 默认配置下：

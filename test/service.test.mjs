@@ -212,3 +212,38 @@ test('stale pending deliveries reconcile to unknown on startup', async () => {
   await reloaded.ready()
   assert.equal(reloaded.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'unknown')
 })
+
+test('a failed pending reconciliation does not block service.ready', async () => {
+  const logs = []
+  const store = {
+    state: {
+      version: 1,
+      groups: {
+        grp_1: {
+          id: 'grp_1',
+          messages: [{
+            id: 'msg_1',
+            kind: 'message',
+            at: 1,
+            deliveries: [{ sessionId: 'session-b', alias: 'bob', status: 'pending' }],
+          }],
+        },
+      },
+      usage: {},
+    },
+    ready: Promise.resolve(),
+    async write() { throw new Error('disk full') },
+    get(id) { return this.state.groups[id] },
+    groupsFor() { return [] },
+  }
+  const service = new GroupService({
+    store,
+    ctx: {},
+    config: { pendingTimeoutMs: 1000 },
+    log: (message) => logs.push(message),
+    now: () => 100000,
+  })
+  await service.ready()
+  assert.equal(store.state.groups.grp_1.messages[0].deliveries[0].status, 'pending')
+  assert.ok(logs.some((line) => line.includes('reconcile')))
+})

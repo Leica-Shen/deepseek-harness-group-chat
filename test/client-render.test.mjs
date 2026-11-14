@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import vm from 'node:vm'
 
-/** A tiny renderer is enough to execute the initial header-panel branch. */
-function loadClient(React, primitives) {
+/** Load the client bundle and execute its `apply` against a tiny slot harness. */
+function loadClientModule(React, primitives) {
   let exported
   const context = {
     locale: { register: () => {} },
@@ -36,10 +36,14 @@ function loadClient(React, primitives) {
   }
   vm.runInNewContext(readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8'), sandbox)
   exported.apply(context)
-  return context.component
+  return { component: context.component, internals: exported.__internals }
 }
 
-function fakeReact({ initiallyOpen = false, stateOverrides = {} } = {}) {
+function loadClient(React, primitives) {
+  return loadClientModule(React, primitives).component
+}
+
+function fakeReact({ initiallyOpen = false } = {}) {
   let stateIndex = 0
   const Fragment = Symbol("Fragment")
   const createElement = (type, props, ...children) => {
@@ -55,8 +59,7 @@ function fakeReact({ initiallyOpen = false, stateOverrides = {} } = {}) {
     createElement,
     useState(initial) {
       const index = stateIndex++
-      const value = Object.hasOwn(stateOverrides, index) ? stateOverrides[index] : index === 0 ? initiallyOpen : initial
-      return [value, () => {}]
+      return [index === 0 ? initiallyOpen : initial, () => {}]
     },
     useEffect() {},
     useMemo(factory) { return factory() },
@@ -105,6 +108,27 @@ function stringsIn(value, found = []) {
   return found
 }
 
+function detailGroup(overrides = {}) {
+  return {
+    id: 'grp_demo',
+    name: 'Release review',
+    topic: 'Ship it',
+    status: 'active',
+    ownerSessionId: 'session-a',
+    members: [
+      { sessionId: 'session-a', alias: 'owner', role: 'Lead', duties: '' },
+      { sessionId: 'session-b', alias: 'bob', role: 'Reviewer', duties: 'Check the diff' },
+    ],
+    me: { sessionId: 'session-a', alias: 'owner', role: 'Lead', duties: '', isOwner: true },
+    messages: [
+      { id: 'msg_1', kind: 'system', at: 1, text: 'Group created.', deliveries: [] },
+      { id: 'msg_2', kind: 'message', at: 2, fromAlias: 'bob', fromSessionId: 'session-b', target: '@owner', text: 'Ready for review.', deliveries: [{ sessionId: 'session-a', alias: 'owner', status: 'delivered' }] },
+    ],
+    messageTotal: 2,
+    ...overrides,
+  }
+}
+
 test('the header panel renders its initial empty state without a store', () => {
   const React = fakeReact({ initiallyOpen: true })
   const Component = loadClient(React, fakePrimitives())
@@ -124,37 +148,30 @@ test('the header panel renders its initial empty state without a store', () => {
   assert.ok(strings.includes("title"))
 })
 
-test('the selected group detail renders members, messages and owner controls', () => {
-  const group = {
-    id: 'grp_demo',
-    name: 'Release review',
-    topic: 'Ship it',
-    status: 'active',
-    ownerSessionId: 'session-a',
-    members: [
-      { sessionId: 'session-a', alias: 'owner', role: 'Lead', duties: '' },
-      { sessionId: 'session-b', alias: 'bob', role: 'Reviewer', duties: 'Check the diff' },
-    ],
-    me: { sessionId: 'session-a', alias: 'owner', role: 'Lead', duties: '', isOwner: true },
-    messages: [
-      { id: 'msg_1', kind: 'system', at: 1, text: 'Group created.', deliveries: [] },
-      { id: 'msg_2', kind: 'message', at: 2, fromAlias: 'bob', target: '@owner', text: 'Ready for review.', deliveries: [{ sessionId: 'session-a', alias: 'owner', status: 'delivered' }] },
-    ],
-    messageTotal: 2,
-  }
-  const React = fakeReact({
-    initiallyOpen: true,
-    stateOverrides: { 2: [group], 9: group.id, 10: 'groups' },
-  })
-  const Component = loadClient(React, fakePrimitives())
-  const useSessions = (selector) => selector({ ids: ['session-a', 'session-b'], byId: {}, phase: 'ready' })
-  const useSession = (selector) => selector({ subagent: null })
-  const tree = render(React.createElement(Component, {
+test('the group detail renders members, messages, version and owner controls', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const group = detailGroup()
+  const tree = render(React.createElement(internals.GroupDetail, {
+    group,
     sessionId: 'session-a',
-    useSessions,
-    useSession,
-    openSession: () => {},
+    busy: '',
+    notice: null,
+    error: null,
+    limits: { replyNudgeAfterMs: 120000 },
+    usage: null,
+    onSend: () => {},
+    onEditRole: () => {},
+    onRemoveMember: () => {},
+    onOpen: () => {},
+    onDissolve: () => {},
+    onDelete: () => {},
+    onAddMember: () => {},
+    onLeave: () => {},
+    onNudge: () => {},
+    version: '1.5.0',
     t: (key) => key,
+    useSessions: (selector) => selector({ byId: {} }),
   }), React.Fragment)
   const strings = stringsIn(tree)
   assert.ok(strings.includes('Release review'))
@@ -162,28 +179,163 @@ test('the selected group detail renders members, messages and owner controls', (
   assert.ok(strings.includes('Ready for review.'))
   assert.ok(strings.includes('dissolve'))
   assert.ok(strings.includes('send'))
+  assert.ok(strings.includes('Group-Talk-L v1.5.0'))
 })
 
 test('the create screen renders its session picker and owner fields', () => {
-  const React = fakeReact({ initiallyOpen: true, stateOverrides: { 0: true, 10: 'create' } })
-  const Component = loadClient(React, fakePrimitives())
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
   const useSessions = (selector) => selector({
     ids: ['session-b'],
     byId: { 'session-b': { sessionId: 'session-b', id: 'session-b', title: 'Other task', updatedAt: 1 } },
     phase: 'ready',
   })
-  const useSession = (selector) => selector({ subagent: null })
-  const tree = render(React.createElement(Component, {
+  const tree = render(React.createElement(internals.CreateForm, {
     sessionId: 'session-a',
     useSessions,
-    useSession,
-    openSession: () => {},
+    onCreate: () => {},
+    onCancel: () => {},
+    busy: '',
+    error: null,
     t: (key) => key,
   }), React.Fragment)
   const strings = stringsIn(tree)
   assert.ok(strings.includes('name'))
-  assert.ok(strings.includes('name'))
   assert.ok(strings.includes('currentSession'))
   assert.ok(strings.includes('selectSessions'))
   assert.ok(strings.includes('createAction'))
+})
+
+test('waiting survives system rows, covers #role, and clears on a reply', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  const base = {
+    status: 'active',
+    messages: [
+      { id: 's1', kind: 'system', at: 1, text: 'created' },
+      { id: 'm1', kind: 'message', at: 10, fromSessionId: 'a', target: '#Reviewer', deliveries: [{ sessionId: 'b', alias: 'bob', status: 'delivered' }] },
+      { id: 's2', kind: 'system', at: 20, text: 'bob joined' },
+    ],
+  }
+  const waiting = internals.deriveWaiting(base, 'a')
+  assert.equal(waiting.target, '#Reviewer')
+  assert.equal(waiting.since, 10)
+  assert.equal(waiting.nudgeable, false)
+
+  const replied = {
+    ...base,
+    messages: [...base.messages, { id: 'm2', kind: 'message', at: 30, fromSessionId: 'b', target: '@a', deliveries: [] }],
+  }
+  assert.equal(internals.deriveWaiting(replied, 'a'), null)
+
+  const failed = {
+    ...base,
+    messages: [{ id: 'm1', kind: 'message', at: 10, fromSessionId: 'a', target: '@bob', deliveries: [{ sessionId: 'b', alias: 'bob', status: 'failed' }] }],
+  }
+  assert.equal(internals.deriveWaiting(failed, 'a'), null)
+
+  const alias = {
+    ...base,
+    messages: [{ id: 'm1', kind: 'message', at: 10, fromSessionId: 'a', target: '@bob', deliveries: [{ sessionId: 'b', alias: 'bob', status: 'delivered' }] }],
+  }
+  assert.equal(internals.deriveWaiting(alias, 'a').nudgeable, true)
+})
+
+test('unread counts only other members after the watermark, ignoring system rows', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  const group = {
+    id: 'g1',
+    status: 'active',
+    me: { sessionId: 'a', alias: 'owner' },
+    messages: [
+      { kind: 'message', at: 9, fromSessionId: 'b' },
+      { kind: 'message', at: 11, fromSessionId: 'a' },
+      { kind: 'message', at: 12, fromSessionId: 'b' },
+      { kind: 'message', at: 13, fromSessionId: 'a' },
+      { kind: 'message', at: 14, fromSessionId: 'b' },
+      { kind: 'system', at: 15, fromSessionId: 'b' },
+    ],
+  }
+  assert.equal(internals.unreadFor(group, { g1: 10 }), 2)
+  assert.equal(internals.unreadFor(group, { g1: 14 }), 0)
+  assert.equal(internals.unreadFor(group, {}), 0)
+  assert.equal(internals.unreadFor({ ...group, status: 'dissolved' }, { g1: 10 }), 0)
+})
+
+test('first sight seeds the watermark so history is not unread', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  const seen = {}
+  const groups = [{ id: 'g1', status: 'active', updatedAt: 99, messages: [{ kind: 'message', at: 50, fromSessionId: 'b' }] }]
+  assert.equal(internals.seedSeen(groups, seen), true)
+  assert.equal(seen.g1, 99)
+  assert.equal(internals.seedSeen(groups, seen), false)
+  assert.equal(internals.markSeen(groups[0], seen), false)
+  groups[0].messages.push({ kind: 'message', at: 120, fromSessionId: 'b' })
+  assert.equal(internals.markSeen(groups[0], seen), true)
+  assert.equal(seen.g1, 120)
+})
+
+test('the group list shows unread badges only when a group has unread messages', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const groups = [
+    { id: 'g1', name: 'Alpha', status: 'active', members: [1, 2], me: { alias: 'owner' } },
+    { id: 'g2', name: 'Beta', status: 'active', members: [1], me: { alias: 'owner' } },
+  ]
+  const tree = render(React.createElement(internals.GroupList, {
+    groups,
+    selectedId: 'g1',
+    unreadById: { g1: 3, g2: 0 },
+    loading: false,
+    error: null,
+    onSelect: () => {},
+    onCreate: () => {},
+    onRetry: () => {},
+    t: (key) => key,
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.includes('3'))
+  assert.ok(!strings.includes('99+'))
+})
+
+test('the detail shows the timeout hint, nudge and open-target controls', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const group = detailGroup({
+    messages: [{
+      id: 'msg_1',
+      kind: 'message',
+      at: 10,
+      fromAlias: 'owner',
+      fromSessionId: 'session-a',
+      target: '@bob',
+      text: 'Please review.',
+      deliveries: [{ sessionId: 'session-b', alias: 'bob', status: 'delivered' }],
+    }],
+    messageTotal: 1,
+  })
+  const tree = render(React.createElement(internals.GroupDetail, {
+    group,
+    sessionId: 'session-a',
+    busy: '',
+    notice: null,
+    error: null,
+    limits: { replyNudgeAfterMs: 120000 },
+    usage: null,
+    onSend: () => {},
+    onEditRole: () => {},
+    onRemoveMember: () => {},
+    onOpen: () => {},
+    onDissolve: () => {},
+    onDelete: () => {},
+    onAddMember: () => {},
+    onLeave: () => {},
+    onNudge: () => {},
+    version: '1.5.0',
+    t: (key) => key,
+    useSessions: (selector) => selector({ byId: {} }),
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.includes('waitingLong'))
+  assert.ok(strings.includes('nudge'))
+  assert.ok(strings.includes('openTarget'))
 })

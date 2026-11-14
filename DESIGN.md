@@ -254,14 +254,14 @@ interface Delivery {
 - 不做群消息内容审核；
 - 不做真实“群聊 Session”或消息回溯重放到新上下文；
 - 不做角色权限继承；
-- 不做未读/已读/在线状态。
+- 不做跨成员已读回执与在线状态；本机未读计数在客户端实现（`localStorage` 水位），不改存储格式。
 
 这些都可以在领域层之上增量添加，而不需要推翻当前模型。
 
 ## 9. 可扩展点
 
 1. `autoRelay`：当一次目标 turn 由群消息触发时，把该 turn 最终 assistant 文本作为一条群消息回给发送者；需要 trip 计数和“仅一层”防循环。
-2. 未读游标：按成员记录 lastReadSeq，UI 显示 badge；不影响存储格式。
+2. 跨设备未读：把本机水位升级为按成员记录的 lastReadSeq；当前实现只在客户端 `localStorage`。
 3. 群主转移：owner 只能转给现有成员，并 append 系统记录；与现有 owner-only 检查兼容。
 4. 附件：复用 `ctx.attachments` 或仅允许文件路径引用；需要权限和 prompt 预算。
 5. 实时：在 Connection 上注册 stream，替代 8 秒轮询。

@@ -50,12 +50,21 @@ cap and `policyRecentMessages: 0` by default.
 ## P2 — version in the panel
 
 The authenticated GET response includes the package version and the group
-detail footer renders `Group-Talk-L v1.4.2`.
+detail footer renders `Group-Talk-L v1.5.0`.
+
+## 1.5.0 follow-up
+
+While taking over the code after 1.4.2, three defects in the rushed follow-up
+were fixed: `#role`/`*` targets lost their waiting hint, a later system row
+cleared waiting, and a failed pending reconciliation rejected `ready()` (which
+would take the whole panel down). Unread counts were added on top: per-group
+badges, a header dot, and a transcript-derived waiting state.
 
 ## Evidence
 
-- `npm test`: **54/54**
+- `npm test`: **60/60**
 - HTTP leave regression test (POST 200, member groups empty)
 - concurrent target-burst regression
-- stale-pending reconciliation test
+- stale-pending reconciliation test, and one proving a failed reconcile still resolves `ready()`
+- waiting derivation (`#role`, system rows, replies) and unread/watermark tests
 - clean clone from GitHub passes the same suite

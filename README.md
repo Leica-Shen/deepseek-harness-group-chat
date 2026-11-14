@@ -1,6 +1,6 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 53 tests · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 60 tests · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
@@ -8,6 +8,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 
 - Web 会话页头新增「群聊」按钮：选择已有会话建群、分配角色、查看记录、发送、解散或删除；
 - 群消息在对话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
+- **未读与等待可控**：页头红点、群列表未读数、等待超时提示与一键「催一下」；读状态只存在本机 `localStorage`，不上报 Host；
 - 提供 `/group` 人类命令与 `group_talk_*` 模型工具；
 - 被加入群组的会话自动获得 scoped system-prompt 说明和工具，知道“我在哪个群、我是谁、怎么回复”；
 - 所有发送统一经过 **fan-out、冷却、去重、每日配额、估算 Token 预算**；
@@ -34,6 +35,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 | 安排各会话角色 | 建群时逐会话填写；群主可在成员行编辑角色与职责；也可 `/group role @别名 <角色>` |
 | 成员退出 | 非群主可 `/group leave` 或在面板「退出群聊」；群主需解散/删除 |
 | 模型管理边界 | 默认 `allowAgentCreate/allowAgentManage=false`：模型不能静默建群/加人；人类面板和命令不受影响 |
+| 未读与等待 | 页头红点、群列表未读数（仅存本机 `localStorage`）；等待按 transcript 推导，覆盖 `@`/`#`/`*`，超时后给「催一下」与「打开对方会话」 |
 | 保持 Harness 原有风格 | 原生 header slot、`Modal`/`Button`/`Input`/`Checkbox`/`Tag`/`StateDot`/`Tooltip`、主题 token、zh/en locale、`/group` slash command、scoped tools |
 | 防信息洪水 / Token 滥用 | fan-out 上限、发送冷却、重复抑制、滑动窗口突发上限、每日 Host/发送者/群/目标四层预算、prompt 硬上限、Web/历史响应上限、群数量上限 |
 
@@ -107,7 +109,7 @@ pnpm add link:"$PLUGIN_DIR"
    - `@别名` → 单个会话
    - `#角色` → 该角色的所有其他成员
 4. 群主可以编辑角色/职责、添加/移除成员、解散或永久删除；
-5. 成员行可跳转到对应会话；面板每 8 秒刷新，页面隐藏时不轮询。
+5. 成员行可跳转到对应会话；面板每 8 秒刷新，页面隐藏时不轮询。面板关闭时，页头每 60 秒查一次未读，收到新消息会亮红点。
 
 输入框上方会显示本群的字符上限、冷却时间、单次收件人上限，以及今日已发条数。
 
@@ -205,7 +207,7 @@ total     = perTarget × recipientCount
 - `interpolate: false`，群消息正文中的 `{{...}}` 不会被 system-prompt 变量插值；
 - Web 列表只返回 `uiMessageLimit` 条（默认 20）；
 - `group_talk_history` 输出受 `maxHistoryToolChars` 限制（默认 12000），并按最新优先裁剪；
-- 面板 8 秒轮询，页面隐藏时暂停。
+- 面板 8 秒轮询，页面隐藏时暂停；面板关闭时页头每 60 秒查一次未读（只读，不唤醒任何会话）。
 
 ### 5. 群膨胀防护
 
@@ -334,7 +336,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-54 个测试覆盖：
+60 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载；
 - 目标解析、角色编辑、所有权、解散/删除；
@@ -371,9 +373,9 @@ node --test test/*.test.mjs
 9. `group_talk_list` / `group_talk_history` 可被循环调用烧 Token；增加每 Agent 每分钟读取上限。
 10. 群消息在会话里只是普通气泡；增加 `【群聊】` 人类可读信封、客户端群消息徽标和“等待回复”提示。
 
-54 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1；随后 1.4.2 增加催复、版本显示、pending 对账与文档修正。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
+60 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1；1.4.2 增加催复、版本显示、pending 对账；1.5.0 增加未读计数、等待状态修正与对账容错。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
 
-剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.2` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
+剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码与测试（本地 `v1.5.0`，尚未推送）已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
 
 ## 已知限制与残余风险
 
@@ -383,10 +385,10 @@ node --test test/*.test.mjs
 - 群消息是 peer content，prompt 明确标注 untrusted，但无法从模型层面 100% 阻止提示注入；
 - 群状态是 Host 级共享数据，不是端到端加密；不要发送凭据；
 - 子代理会话不允许入群；
-- 无群主转移、未读/已读、实时推送；
+- 未读只在本机（`localStorage`），没有跨设备同步，也没有给其他成员的已读回执；无群主转移、无实时推送；
 - 进程内串行化，多个 Host 进程同时写同一个 `dataFile` 不受跨进程锁保护；
 - 每日预算按 UTC 重置；跨时区团队需注意边界；
-- 面板 8 秒轮询，最多约 8 秒显示延迟。
+- 面板 8 秒轮询、页头 60 秒未读轮询，最多约 8/60 秒显示延迟。
 
 ## 文件结构
 

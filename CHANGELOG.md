@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0
+
+- Unread counts: per-group badges in the list and a dot on the header action
+  while the panel is closed (60 s poll). Read state is per-session in
+  `localStorage`, so the Host never tracks what a human has read.
+- Waiting-for-reply is derived from the transcript: `#role` and `*` targets are
+  covered, a later system row no longer clears it, and a reply from any member
+  clears it. The timeout offers “open the target session” beside “nudge”.
+- Delivery status reports `unknown`/`failed` counts instead of a bare
+  “delivered”, and a nudge button can no longer fire twice while a send is in
+  flight.
+- Pending reconciliation is best-effort: a failed write is logged and leaves
+  the store intact instead of rejecting `ready()` and taking the panel down.
+- A missing `package.json` no longer blocks the Host module; the reported
+  version falls back to `0.0.0`.
+- 60 tests.
+
 ## 1.4.2
 
 - Waiting-for-reply timeout with a one-click nudge.
