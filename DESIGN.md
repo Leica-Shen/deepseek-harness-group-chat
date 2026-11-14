@@ -42,7 +42,7 @@ Agent Teams 解决的是“从 Lead 派生 teammate”的问题；Session Refere
 这是需求里最容易被忽略、但决定插件是否可用的部分。三种告知方式叠加：
 
 1. **Scoped system prompt**：只在该成员 Agent 的 scope 注册 `group-talk-l:policy`，不污染非成员；
-2. **Scoped tools**：只在该成员 scope 注册 6 个工具，工具不可用时模型不会误以为能发；
+2. **Scoped tools**：只在该成员 scope 注册分级的 group tools（默认 5 个；create/manage/delegate 按配置追加），工具不可用时模型不会误以为能发；
 3. **投递 envelope**：每条消息以「【群聊 / Group chat】群名」开头，带 `@发送者（角色）→ @收件人（角色）`、机器可读 JSON 和一行回复提示。首两行给人看，JSON 给模型解析；即使成员没有读过 policy，也能从当下这条消息知道怎么回。
 
 prompt section 的动态函数在每次模型请求时重新渲染，所以角色修改、成员变化、解散/删除后，下一次请求立即反映；撤销成员时 scoped 注册立即 dispose。
@@ -105,7 +105,7 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 
 ### 2.9 人类优先与审计（2.1）
 
-- 人类消息使用 `priority: "human"` 的 envelope，按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。
+- 人类消息按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。每条消息再带 `priority: ambient`（默认，不改变当前计划，完成当前 step/回合后再读）或 `urgent`（下一个 step 边界优先处理）；两者都不中止运行中的工具。
 - 人类发送绕过 target 冷却、target burst、target 日投递/Token 上限（`humanBypassTargetCaps`），但仍计入 group/Host/sender 预算，避免变成无限广播总线。理由：人的一句纠正不能被某个成员的日额度挡住；群级/全局预算仍防止滥用。
 - `kind: "control"` 的 transcript 行保存 `action/taskId/outcome/reason/parentRequestId/supersededBy`。审计视图只读展示这些行与失败/未确认投递；人类不需要依赖模型转述。
 - 面板的「保持打开」只保护“自动切换”场景：面板打开期间写入 pin；用户在面板外的 pointerdown 或「返回对话」会清除 pin，因此显式导航不会被弹回。
@@ -114,8 +114,8 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 
 - 只在 organizer/owner 成员的 live Agent 下 `subagents.start`；`maxDepth: 0`，deny 全部 `group_talk_*`，结果截断，超时 `AbortController`，运行结束 `dispose()`。
 - 子代理不是群成员，不注入 group policy，不进入成员列表；它的 start/complete/fail 只作为 control 行进入群记录。
-- `allowAgentDelegate` 默认 false；开启后还需要 organizer 角色、live parent、每日配额。人类面板的「委派子代理」走 `delegateForHuman`，Host 先找 live organizer；找不到就 fail closed，不假装成功。
-- 委派不是 task/ack 控制层的替代：2.1 仍没有 per-message `queue/steer` 选择、`interrupt`、`supersede`；这些是 2.2 的控制层。
+- `allowAgentDelegate` 默认 false；开启后还需要 organizer 角色、live parent、每日配额。委派只由 organizer/owner 的工具发起；人类面板**不提供**手动委派按钮，人类给组织者发任务即可。live parent 找不到就 fail closed，不假装成功。
+- 委派不是 task/ack 控制层的替代：2.1 有 per-message `priority: ambient/urgent`（面板不再用 queue），但还没有 `interrupt`、`ack`、`supersede`；这些是 2.2 的控制层。
 
 ## 3. 组件
 
@@ -252,7 +252,7 @@ interface Delivery {
 - `service.test.mjs`：建群、按 alias/role/all 发送、self-target、非成员、owner-only、角色编辑、解散/删除、子代理拒绝、持久化重载；
 - `policy.test.mjs`：成员 prompt、非成员空 policy、envelope、help/history；
 - `command.test.mjs`：slash grammar、`confirm` 删除、命令驱动真实 service；
-- `host.test.mjs`：Host `apply` 注册 `/group`、按成员安装 6 个工具和 prompt section、发送、解散后卸载；
+- `host.test.mjs`：Host `apply` 注册 `/group`、按成员安装分级的 group tools 和 prompt section、发送、解散后卸载；
 - `client.test.mjs`：通过 `window.__ModuleLoader__` 装载 client bundle、注册 locale/stylesheet/header slot；
 - `client-render.test.mjs`：初始空态、群详情、创建页的渲染 smoke test；
 - `http.test.mjs`：认证 Fetch 路由、limits/usage、429 映射；

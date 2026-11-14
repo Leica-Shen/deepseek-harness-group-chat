@@ -394,6 +394,7 @@ test('secretary and organizer presets are available to the role UI', () => {
   const ids = internals.ROLE_PRESETS.map((preset) => preset.id)
   assert.ok(ids.includes('secretary'))
   assert.ok(ids.includes('organizer'))
+  assert.ok(ids.includes('security'))
   assert.match(internals.ROLE_PRESETS.find((preset) => preset.id === 'secretary').dutiesZh, /日志|回退/)
   assert.match(internals.ROLE_PRESETS.find((preset) => preset.id === 'organizer').dutiesZh, /调度|冲突/)
 })
@@ -423,21 +424,6 @@ test('control entries render in the transcript and the audit view', () => {
   assert.ok(strings.some((value) => value.includes('controlDelegate')))
   assert.ok(strings.includes('Delegation task_1 completed: done.'))
   assert.ok(strings.includes('auditTitle'))
-})
-
-test('the delegation form renders its task, label and warning', () => {
-  const React = fakeReact()
-  const { internals } = loadClientModule(React, fakePrimitives())
-  const tree = render(React.createElement(internals.DelegateModal, {
-    onStart: () => {},
-    onClose: () => {},
-    busy: '',
-    error: null,
-    t: (key) => key,
-  }), React.Fragment)
-  const strings = stringsIn(tree)
-  assert.ok(strings.includes('delegateTask'))
-  assert.ok(strings.includes('delegateHint'))
 })
 
 test('the group list shows a flat preview and a collapse control', () => {

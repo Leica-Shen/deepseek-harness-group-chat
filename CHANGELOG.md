@@ -6,21 +6,27 @@
   instructions (not untrusted peer content) in the delivery envelope, bypass
   target cooldown/target daily caps, and never wake a Session for an in-room
   target. The human sees every failure and audit entry in the panel.
-- **Secretary and Organizer roles.** Secretary records audited notes and
-  rollback minutes (`group_talk_note`); Organizer can dispatch a bounded,
-  audited subagent task (`group_talk_delegate`). Roles remain advisory; the
-  host enforces who may write/delegate.
+- **Secretary, Organizer and Security Lead roles.** Secretary records audited
+  notes and rollback minutes (`group_talk_note`); Organizer dispatches bounded,
+  audited subagent tasks (`group_talk_delegate`); Security Lead reviews
+  delegation, permissions, secrets and prompt-injection risk. Roles remain
+  advisory; the host enforces who may write/delegate.
 - **Audited subagent delegation.** A subagent is spawned under a live
   organizer/owner Agent with `maxDepth: 0`, all `group_talk_*` tools denied,
   a timeout, per-person daily quota, result cap and `delegation start/result`
   control rows. Disabled by default (`allowAgentDelegate: false`).
 - **Human oversight.** New audit view (control entries + failed/unknown
-  deliveries), human-only panel delegate action, and a control-entry schema
-  (`kind: "control"`) that survives persistence.
-- **UI.** Flat, expandable group list with message previews; audit and
-  delegation actions; keep-open pin that restores the room after a new message
-  auto-switches the shell; panel-level error boundary; draft/selection
-  restoration; empty-room creation; composer placeholder fix; visual cleanup.
+  deliveries), durable `group.audit` rows, and a control-entry schema
+  (`kind: "control"`) that survives transcript trimming. Delegation is
+  organizer-driven; the panel no longer has a manual delegate button.
+- **UI.** Flat, expandable group list with message previews; audit action;
+  keep-open pin that restores the room after a new message auto-switches the
+  shell; panel-level error boundary; long-message collapse; draft/selection
+  restoration; empty-room creation; composer placeholder fix; layout hardening
+  for overlap/clipping.
+- **Priority instead of queue UI.** Messages carry `ambient` (default: finish
+  the current step/turn first, do not change the plan) or `urgent` (next step
+  boundary). The panel no longer offers `queue`; the advanced `mode` remains.
 - **Tests.** 82 tests, including human priority, secretary notes, delegation
   role/quota/depth/tool-filter/disposal, control persistence and client
   rendering.

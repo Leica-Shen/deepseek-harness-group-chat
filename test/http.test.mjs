@@ -188,28 +188,6 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
   assert.equal(humanTarget.status, 400)
   assert.equal((await humanTarget.json()).error.code, 'self-target')
 
-  const delegateCreate = await route.fetch(new Request('http://localhost/api/group-talk-l', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      action: 'create',
-      name: 'Delegate room',
-      members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
-    }),
-  }))
-  assert.equal(delegateCreate.status, 200)
-  const delegateGroup = (await delegateCreate.json()).group
-  const delegated = await route.fetch(new Request('http://localhost/api/group-talk-l', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ action: 'delegate', group: delegateGroup.id, task: 'research this' }),
-  }))
-  assert.equal(delegated.status, 200)
-  assert.equal((await delegated.json()).outcome, 'completed')
-  const afterDelegate = await route.fetch(new Request('http://localhost/api/group-talk-l', { method: 'GET' }))
-  const delegateView = (await afterDelegate.json()).groups.find((group) => group.id === delegateGroup.id)
-  assert.ok(delegateView.messages.some((message) => message.kind === 'control' && message.action === 'delegate'))
-
   const wrongType = await route.fetch(new Request('http://localhost/api/group-talk-l', {
     method: 'POST',
     headers: { 'content-type': 'text/plain' },

@@ -222,7 +222,7 @@ Group-Talk-L 的每个群消息都可能：
 | `client-render.test.mjs` | 空态/详情/创建页渲染、等待推导、未读计数与已读水位 |
 | `protection.test.mjs` | 基线放大、fan-out、冷却、去重、sender/target/group/token 预算、群膨胀、prompt/历史/UI 上限、账本持久化 |
 | `security.test.mjs` | 目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、0600/0700 |
-| `security-2.test.mjs` | 人类优先、秘书角色、委派角色/深度/工具过滤/配额/`dispose`、control 持久化 |
+| `security-2.test.mjs` | 人类优先、秘书/安全主管角色、委派角色/深度/工具过滤/配额/`dispose`、control 持久化、priority |
 | `config.test.mjs` | 默认值、steer、burst/host 限值与非法值回退 |
 
 正式启用前检查：
@@ -264,7 +264,7 @@ Group-Talk-L 的每个群消息都可能：
 1. **投递缺少 AbortSignal**：`ctx.sessionController.prompt` 的 Host 包装层要求第二个参数是 `AbortSignal`。修复为 `prompt(request, AbortSignal.timeout(30000))`。
 2. **页头按钮被隐藏**：普通会话的 `subagent` 投影是 `null`，原判断 `!== undefined` 把它当成子会话，组件返回 `null`，侧栏事件没有接收者。修复为 `Boolean(snapshot?.subagent)`，并让侧栏图标优先点击一个隐藏的 direct opener。
 3. **侧栏按钮不可点击**：上游 section header 存在 `pointer-events: none` 继承，注入按钮的 click/hover 都不触发。显式添加 `pointer-events: auto; position: relative; z-index: 1` 后，真实鼠标点击可打开表单。
-4. **回复排队到回合结束**：默认投递模式是 `queue`，运行中的目标只能在本轮结束后看到群消息。改为默认 `steer`，等价于 DSH 的「插话」，在下一个 step 边界送达；`queue` 保留为显式配置。
+4. **回复排队到回合结束**：默认投递模式是 `queue`，运行中的目标只能在本轮结束后看到群消息。改为默认 `steer`，在下一个 step 边界送达；并以 `priority: ambient/urgent` 提示目标是否改变当前计划。`queue` 仅保留为高级配置，面板不再推荐。
 5. **tool 输出含 undefined**：旧 `summarize` 给 system 消息写了 `from: undefined` / `target: undefined`，Harness 的 lossless-JSON 输出校验拒绝。已按字段存在性构造 JSON，并增加递归 no-undefined 测试。
 6. **模型管理权限过宽**：默认 `allowAgentCreate/allowAgentManage=false`，模型工具不能静默建群/加人；人类面板和 `/group` 命令仍可。新增 `group_talk_leave`、`/group leave` 和 UI「退出群聊」。
 7. **target burst 竞态**：并发请求在 pending 阶段看不到已占用的 target 配额；现在 pending 也计入，并增加跨群并发回归。
@@ -304,9 +304,9 @@ Group-Talk-L 的每个群消息都可能：
 | 结果泄露隐私 / 挤爆 transcript | 结果截断到 `maxDelegationChars`；只写 control 行；模型侧返回同样截断；原始错误只进 Host 日志 |
 | 无审计的暗箱委派 | 每次 start/complete/fail 写 `kind: "control"` 行（actor、taskId、provider、outcome、reason），人类审计视图可见 |
 | 用委派绕过群预算 | 委派另计每日配额；子代理的模型调用仍受 Host 自身计费/限制；群消息预算不变 |
-| 目标会话不在线仍假装委派 | `delegateForHuman` 要求 live organizer Agent；不在线直接 fail closed |
+| 目标会话不在线仍假装委派 | 委派只由 organizer/owner 的工具发起，要求 live parent Agent；人类面板不再提供手动委派按钮 |
 
-已知残余风险：子代理仍可使用它被允许的文件/命令工具，可能在工作区产生副作用；当前没有“逐任务人工批准”对话框，只有人类显式开启 `allowAgentDelegate` + organizer 角色 + 审计。高价值群建议保持默认关闭，或只在受控组织者会话开启。
+已知残余风险：子代理仍可使用它被允许的文件/命令工具，可能在工作区产生副作用；当前没有“逐任务人工批准”对话框，只有人类显式开启 `allowAgentDelegate` + organizer 角色 + 安全主管审计。高价值群建议保持默认关闭，或只在受控组织者会话开启。
 
 测试：`test/security-2.test.mjs` 覆盖角色门禁、默认关闭、provider 缺失、`maxDepth: 0`、群工具 deny、超时/dispose、每日配额、control 行持久化、人类优先 envelope。
 

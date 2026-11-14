@@ -10,9 +10,9 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 
 - **人类信息优先**：人类消息按“用户指令”投递，不按不可信 peer content；人类发送绕过目标冷却/目标日上限（群与 Host 预算仍保留），所有失败和审计对面板可见。
 - **审计视图**：`kind: "control"` 的委派、秘书记录、失败投递集中展示；人类可以看到一切，不依赖模型转述。
-- **秘书 / 组织者**：秘书写审计日志与回退记录（`group_talk_note`）；组织者做任务调度与子代理委派（`group_talk_delegate`）。角色仍是职责标签，不是权限位。
+- **秘书 / 组织者 / 安全主管**：秘书写审计日志与回退记录（`group_talk_note`）；组织者做任务调度与子代理委派（`group_talk_delegate`）；安全主管审查委派/权限/密钥/提示注入风险并记录整改/否决建议。角色仍是职责标签，不是权限位。
 - **有界子代理委派**：仅在 live organizer/owner Agent 下启动；`maxDepth: 0`、禁用全部 `group_talk_*` 工具、超时、每日配额、结果截断、`delegation started/completed/failed` 审计；默认关闭 `allowAgentDelegate`。
-- **不打断的发送方式**：面板默认「排队（不打断）」，等目标本轮结束再投；需要插话时选「插话（step 边界）」。模型侧 `group_talk_send` 也接受 `mode`，不中止正在运行的工具。
+- **不打断的优先级**：每条消息带 `ambient` / `urgent`。面板默认 `ambient`：目标先完成当前 step/回合、不改计划，之后再读；`urgent` 只要求在下一个 step 边界优先处理。两者都不中止正在运行的工具。`queue` 仅作为高级 `mode` 保留，面板不再推荐。
 - **群聊面板稳定性**：群列表改为可展开的对话列表（含最后一条预览），「保持打开」在消息触发自动切换后把人类拉回房间；面板级错误边界不再把用户丢回普通对话；草稿与选中群在切换后恢复；可创建空房间。
 - **视觉**：扁平列表、角色/参与者行、审计与委派操作、消息/控制行、窄屏与暗色 token 收敛；去掉旧卡片感与重复描边。
 
@@ -25,7 +25,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 
 - **像普通对话一样使用**：左侧边栏有「群聊」入口（未读红点），点开后在主区域占满整屏，不再是弹窗；
 - **你直接说话**：面板与 `/group` 发出的消息以「你」（`@human`）署名，不再借用某个会话的身份；
-- 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员 / 秘书 / 组织者，或自定义）分工；没有会话级的「群主」，房间由你管理；
+- 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员 / 秘书 / 组织者 / 安全主管，或自定义）分工；没有会话级的「群主」，房间由你管理；
 - 建群时只选参与者，不预选「当前会话」；
 - 群消息在参与者会话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
 - 人类操作者的消息是 in-room：写入群记录、面板可见，但不唤醒任何会话，也不计入投递/Token 预算；
@@ -50,7 +50,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 | 创建群组 | 侧栏「群聊」→「新建」：只选参与者（已有会话），填写别名与角色；不预选当前会话 |
 | 用特定指令符与指定会话对话 | `/group @别名 <消息>`；`/group #角色 <消息>`；`/group * <消息>`；模型侧用 `group_talk_send` |
 | 你与参与者对话 | 你发到 `@参与者` 的消息会作为普通用户消息投递进该会话；参与者用 `group_talk_send` 把回答发回群里 |
-| 被应用的会话知道怎么用 | 加入时向该 Agent scope 注册 `group-talk-l:policy` prompt section 与 6 个工具；prompt 含角色、成员、最近记录、回复方法与安全边界 |
+| 被应用的会话知道怎么用 | 加入时向该 Agent scope 注册 `group-talk-l:policy` prompt section 与分级的 group tools（默认 5 个；create/manage/delegate 按配置追加）；prompt 含角色、成员、最近记录、回复方法与安全边界 |
 | 解散群组 | `/group dissolve` 或面板「解散群组」：冻结成员与记录，保留只读查看 |
 | 删除群组 | `/group delete <群> confirm` 或面板「删除群组」：永久删除群组与记录 |
 | 安排各会话角色 | 建群时逐参与者选择角色；之后可在参与者行编辑；预设：设计师 / 评委 / 研究员 / 实验员，也可自定义 |
@@ -300,7 +300,7 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `maxMembersPerGroup` | `16` | 1–64 | 每群成员上限（含人类操作者 `@human`） |
 | `policyRecentMessages` | `0` | 0–10 | prompt 注入最近记录条数；默认关闭以降低注入面 |
 | `policyMaxChars` | `3500` | 800–20000 | prompt section 字符硬上限 |
-| `deliveryMode` | `steer` | steer/queue | 目标投递模式；`steer` 在运行中目标的下一个 step 插入，`queue` 等下一轮 |
+| `deliveryMode` | `steer` | steer/queue | 目标投递模式；`steer` 在下一个 step 边界插入；`queue` 仅作为高级模式保留，面板已不再使用 |
 | `maxMessageChars` | `2000` | 100–8000 | 单条消息字符上限 |
 | `maxRecipientsPerSend` | `6` | 1–64 | 单次 fan-out 上限 |
 | `sendCooldownMs` | `3000` | 0–600000 | 发送者全局冷却 |
@@ -349,9 +349,9 @@ $DSH_HOME/group-talk-l/groups.json
 2. 去重；
 3. 在同一事务中检查并记账所有预算；
 4. 消息以 `pending` 投递记录写入 transcript；
-5. 对每个目标调用 `ctx.sessionController.prompt`，默认 `steer`（运行中目标在下一个 step 边界插入；可配置为 `queue` 延迟到下一轮）；
+5. 对每个目标调用 `ctx.sessionController.prompt`，默认 `steer`（运行中目标在下一个 step 边界插入；面板用 `priority: ambient/urgent` 控制是否打断当前计划，`queue` 仅高级配置）；
 
-> 默认使用 DSH 原生 **steer** 投递，等价于输入框的「插话」：目标正在运行时不排队到回合结束，而是在下一个 step 边界收到消息；目标空闲时仍会正常唤醒。若希望严格等对方完成当前回合，把 `deliveryMode` 设为 `queue`。
+> 默认使用 DSH 原生 **steer** 投递，等价于输入框的「插话」：目标正在运行时不排队到回合结束，而是在下一个 step 边界收到消息；目标空闲时仍会正常唤醒。`queue` 仍可作为高级配置严格等对方完成当前回合，但它的等待时间通常很长，面板已取消该选项。
 6. 把 `delivered`/`failed` 写回。
 
 “发送成功”只表示 Host 已接纳进目标 inbox，不代表目标完成推理。目标的普通 assistant 回答不会自动回群；需要显式调用 `group_talk_send`。这是为了防循环，也是有意的安全边界。
@@ -372,7 +372,7 @@ node --test test/*.test.mjs
 - Client bundle 装载、`main` 面板与 `sidebar.panellist` 注册、空态/详情/创建页渲染、控制行/审计/委派表单/可展开列表；
 - 等待推导、未读水位与侧栏入口；
 - **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化；
-- **2.1 安全**：人类优先绕过目标上限、秘书角色门禁、委派角色/深度/工具过滤/超时/配额/结果截断/`dispose`、control 行注入边界。
+- **2.1 安全**：人类优先绕过目标上限、秘书/组织者/安全主管门禁、委派角色/深度/工具过滤/超时/配额/结果截断/`dispose`、control 行注入边界。
 
 ## 验证状态（2.1.0）
 
@@ -426,3 +426,15 @@ group-talk-l/
   DESIGN.md
   SECURITY.md
 ```
+
+
+## 同类项目参考
+
+写 2.1 时参考了这些同类项目的产品结构与交互，不复制其代码（各自许可见仓库）：
+
+- [alexbu512/milancat-bot](https://github.com/alexbu512/milancat-bot)：把 AI 组织放进 DSH 侧栏，chief-of-staff / 部门 / 岗位 / 子 agent 分派，对「群聊入口 + 组织者调度」很有参考价值。
+- [Leo-sail/dsh-plugin-agent-collaboration](https://github.com/Leo-sail/dsh-plugin-agent-collaboration)：persistent Bots、group rooms、leader triage、shared experience 和 durable runs。
+- [Agentic-System-Lab/harness-relay](https://github.com/Agentic-System-Lab/harness-relay)：给多个 CLI/agent 分配角色、控制 turn-taking、让它们互相回答。
+- [NanmiCoder/dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams)：DSH 上的 agent team 形态。
+
+本项目与它们的关键差异：Group-Talk-L 不创建“群聊 Session”，群只是成员关系 + transcript + 路由；人类是 UI-only 的 in-room 参与者；子代理委派默认关闭、 organizer/owner 才能发起，且不加入群。

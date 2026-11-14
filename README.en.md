@@ -8,16 +8,16 @@ Group-Talk-L lets the person talk to **existing agent sessions** as a group with
 
 - **Human priority.** Human messages are delivered as user instructions (`priority: "human"`), not untrusted peer content. They bypass a target's cooldown and target daily caps (group/Host budgets remain), and the panel shows every failure and audit entry.
 - **Audit view.** Machine-readable `kind: "control"` rows record delegation, secretary notes and failed deliveries. The human sees the control plane directly, without asking a model to summarize it.
-- **Secretary / Organizer roles.** Secretary writes audited notes and rollback minutes (`group_talk_note`); Organizer can dispatch a bounded subagent task (`group_talk_delegate`). Roles remain advisory; the Host enforces who may write or delegate.
+- **Secretary / Organizer / Security Lead roles.** Secretary writes audited notes and rollback minutes (`group_talk_note`); Organizer dispatches bounded subagent tasks (`group_talk_delegate`); Security Lead reviews delegation, permissions, secrets and prompt-injection risk and records veto/remediation notes. Roles remain advisory; the Host enforces who may write or delegate.
 - **Audited subagent delegation.** A child is started only under a live organizer/owner Agent. It gets `maxDepth: 0`, all `group_talk_*` tools are denied, it has a timeout and a daily quota, its result is capped, and its `started/completed/failed` state is written to the room as a control row. `allowAgentDelegate` is **off by default**.
-- **Queue or steer.** The panel defaults to `queue` (wait for the target's turn to end) so a group message does not routinely interrupt another session; choose `steer` only when you want the next-step insertion. `group_talk_send` accepts the same per-message `mode`; neither aborts a running tool.
+- **Ambient or urgent priority.** Every message carries `ambient` or `urgent`. The panel defaults to `ambient`: the target finishes its current step/turn and does not change its plan; `urgent` asks for priority at the next step boundary. Neither aborts a running tool. `queue` remains an advanced `mode`, no longer recommended in the panel.
 - **Panel stability.** The group list is a flat, expandable conversation list with last-message previews. "Keep open" restores the room after a new message auto-switches the shell, while an explicit click or "Back to chat" clears the pin. A panel-level error boundary prevents a render failure from dropping the person into a conversation. Drafts and the selected room are restored.
 - **Visual cleanup.** Flat list rows instead of cards, clearer role/member rows, audit/delegation actions, control rows, empty-room creation, a proper composer placeholder, and theme-token-based colors.
 
 ## Explicit non-goals in 2.1
 
 - No automatic relay of ordinary assistant answers.
-- No silent interrupt/cancel yet: delivery is still `steer` at the next step boundary. Per-message `queue/steer`, `interrupt`, `ack/supersede` are the 2.2 control-layer candidates.
+- No silent interrupt/cancel yet: delivery is still `steer` at the next step boundary; priority tells the target whether it may change its current plan. `interrupt`, `ack/supersede` are the 2.2 control-layer candidates.
 - No cross-process group-delete guarantee.
 - A subagent never joins the group, never reads the group transcript, and cannot delegate further.
 
@@ -39,7 +39,7 @@ Add `@local/group-talk-l` to the profile's `dsh.profile.bundles`, then **restart
 4. The participant receives a `【群聊 / Group chat】…` message at its next step boundary. A normal assistant answer stays local; the participant replies with `group_talk_send`.
 5. The footer shows the plugin version, limits and usage. The **Audit** view shows control rows and failed deliveries. **Keep open** protects the room from automatic shell switching.
 
-Roles: Designer, Judge, Researcher, Experimenter, **Secretary**, **Organizer**, or a custom label. Roles are routing/duty labels, not authority.
+Roles: Designer, Judge, Researcher, Experimenter, **Secretary**, **Organizer**, **Security Lead**, or a custom label. Roles are routing/duty labels, not authority.
 
 ## Human priority and subagent delegation
 
@@ -89,3 +89,13 @@ Coverage includes persistence, corruption, routing, roles, human in-room/priorit
 ## Status
 
 Source is **2.1.0**. The current live Host may still be 2.0.3 until Harness is restarted; the 2.1 client panel has been opened live, including the "new message does not drop the room" regression. Real-provider delegation still needs one post-restart run by an organizer session.
+
+
+## Similar projects (references, not copied code)
+
+- [alexbu512/milancat-bot](https://github.com/alexbu512/milancat-bot) — an AI organization in the DSH sidebar: chief-of-staff, departments, roles and child-agent dispatch. Strong reference for the organizer/sidebar model.
+- [Leo-sail/dsh-plugin-agent-collaboration](https://github.com/Leo-sail/dsh-plugin-agent-collaboration) — persistent bots, group rooms, leader triage and durable runs.
+- [Agentic-System-Lab/harness-relay](https://github.com/Agentic-System-Lab/harness-relay) — roles and turn-taking across CLI agents.
+- [NanmiCoder/dsh-agent-teams](https://github.com/NanmiCoder/dsh-agent-teams) — another DSH agent-team shape.
+
+Group-Talk-L differs by keeping the group as membership + transcript + routing (not a new Session), making the human an in-room UI-only principal, and making subagent delegation opt-in, organizer/owner-only, audited and non-member.

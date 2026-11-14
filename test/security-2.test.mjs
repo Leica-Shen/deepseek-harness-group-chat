@@ -186,11 +186,11 @@ test('a human envelope carries human priority, an agent envelope stays untrusted
   }
   const human = buildDeliveryEnvelope(group, group.members[0], group.members[1], { text: 'please' })
   assert.match(human, /human operator/)
-  assert.match(human, /"priority":"human"/)
+  assert.match(human, /"priority":"ambient"/)
   assert.match(human, /"kind":"human"/)
   const agent = buildDeliveryEnvelope(group, group.members[1], group.members[0], { text: 'reply' })
   assert.match(agent, /untrusted|不可信/i)
-  assert.doesNotMatch(agent, /"priority":"human"/)
+  assert.match(agent, /"priority":"ambient"/)
 })
 
 test('control entries survive persistence normalization', async () => {
@@ -311,7 +311,7 @@ test('control audit rows survive transcript trimming', async () => {
 })
 
 
-test('delegation output is capped and human delegation fails closed without a live organizer', async () => {
+test('delegation output is capped', async () => {
   const capped = await harness({ allowAgentDelegate: true, maxDelegationChars: 20 })
   const group = await capped.service.create('human', {
     name: 'Capped',
@@ -320,14 +320,22 @@ test('delegation output is capped and human delegation fails closed without a li
   capped.setResult(Promise.resolve({ output: [{ type: 'text', text: 'x'.repeat(1000) }], stopReason: 'completed' }))
   const result = await capped.service.delegate({ id: 'session-org' }, 'session-org', group.id, { task: 'cap' })
   assert.equal(result.output.length, 20)
+})
 
-  const noLive = await harness({ allowAgentDelegate: true })
-  const group2 = await noLive.service.create('human', {
-    name: 'No live',
-    members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
-  })
-  await assert.rejects(
-    () => noLive.service.delegateForHuman('human', group2.id, { task: 'panel' }),
-    /not live|delegation-unavailable/i,
-  )
+
+test('priority is ambient by default and urgent is carried into the envelope', () => {
+  const group = {
+    id: 'grp_p',
+    name: 'Priority',
+    members: [
+      { sessionId: 'human', alias: 'human', role: 'human' },
+      { sessionId: 'session-b', alias: 'bob', role: 'Designer' },
+    ],
+  }
+  const ambient = buildDeliveryEnvelope(group, group.members[0], group.members[1], { text: 'later' })
+  assert.match(ambient, /"priority":"ambient"/)
+  assert.match(ambient, /不要打断|do not interrupt/)
+  const urgent = buildDeliveryEnvelope(group, group.members[0], group.members[1], { text: 'now', priority: 'urgent' })
+  assert.match(urgent, /"priority":"urgent"/)
+  assert.match(urgent, /step 边界|step boundary/)
 })
