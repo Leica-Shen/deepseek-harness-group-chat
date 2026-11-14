@@ -44,7 +44,24 @@ Previous drafts used `osascript ... set size`, which is blocked by System Events
 5. Capture the window:
    - `Cmd Shift 4`, then Space, then click the Harness window, **or**
    - `screencapture -x /tmp/group-talk-ui-acceptance.png` for the full screen.
-6. Save under `评审证据/ui-2.1/` with a name like `980-125-longmsg-collapsed.png`.
-7. Restore zoom with `Cmd 0` and restore the window size by dragging.
+6. Save under `评审证据/ui-2.1/` with a name that includes host/client version and zoom, e.g. `980-125-host2.1.0-client2.1.0.png`. The 2.0.3 capability-disabled baseline belongs in `评审证据/ui-2.0.3/`, not mixed into `ui-2.1/`.
+7. Generate `evidence.json` beside the screenshot with the helper (no AppleScript):
+
+```bash
+cd /Users/Leica_Shen/Desktop/Create/group-talk-l
+node scripts/evidence.mjs \
+  --dir ../评审证据/ui-2.1 \
+  --screenshot 980-125-host2.1.0-client2.1.0.png \
+  --host 2.1.0 \
+  --window 980 \
+  --zoom 1.25 \
+  --capabilities '{"inRoom":true,"priority":true,"control":true,"delegate":true}' \
+  --notes "long alias + long message collapsed"
+```
+
+For the 2.0.3 baseline use `--dir ../评审证据/ui-2.0.3`, `--host 2.0.3`, and `--capabilities none` (the GET response has no capabilities). The helper reads the client version from `package.json`, the commit from `git rev-parse --short HEAD`, and writes `{commit, hostVersion, clientVersion, capabilities, windowWidth, zoom, timestamp, screenshot, notes}` atomically as `evidence.json`.
+8. Restore zoom with `Cmd 0` and restore the window size by dragging.
+
+The panel version line shows client + host. For the exact `capabilities`, open DevTools → Network → the `GET /api/group-talk-l` response (2.0.3 has no `capabilities` key; 2.1 returns `{inRoom, priority, control, delegate}`). Do not hand-edit values to match a desired result; the evidence file must reflect what the page actually returned.
 
 Do not edit `groups.json` to fabricate delegation rows for a screenshot: the audit view must reflect a real organizer run, otherwise the evidence is invalid. Do not use `osascript` to resize the window or click controls; the acceptance doc must be runnable without System Events permissions.
