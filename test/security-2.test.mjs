@@ -107,6 +107,8 @@ test('secretary notes are audited control entries and role-gated', async () => {
   assert.equal(control.action, 'note')
   assert.equal(control.outcome, 'recorded')
   assert.match(control.text, /Decision/)
+  assert.ok(Array.isArray(view.audit))
+  assert.ok(view.audit.some((entry) => entry.action === 'note'))
   await assert.rejects(
     () => service.note('session-b', group.id, 'not allowed'),
     /secretary|organizer|role-required/i,
@@ -220,9 +222,15 @@ test('control entries survive persistence normalization', async () => {
     return draft.groups.grp_c
   })
   assert.equal(group.messages[0].kind, 'control')
-  const raw = JSON.parse(await (await import('node:fs/promises')).readFile(join(store.file.replace(/groups\.json$/u, ''), 'groups.json'), 'utf8'))
+  assert.equal(group.audit.length, 1)
+  const raw = JSON.parse(await (await import('node:fs/promises')).readFile(store.file, 'utf8'))
   assert.equal(raw.groups.grp_c.messages[0].action, 'note')
   assert.equal(raw.groups.grp_c.messages[0].outcome, 'recorded')
+  assert.equal(raw.groups.grp_c.audit[0].action, 'note')
+  const reloaded = new GroupStore({ file: store.file, historyLimit: 60 })
+  await reloaded.ready
+  assert.equal(reloaded.state.groups.grp_c.audit[0].action, 'note')
+  assert.equal(reloaded.state.groups.grp_c.audit[0].outcome, 'recorded')
 })
 
 test('per-message delivery mode overrides the deployment default', async () => {
@@ -262,4 +270,42 @@ test('secretary notes are disabled by config and delegation timeout disposes the
   const view = slow.service.listFor('human').find((entry) => entry.id === slowGroup.id)
   const failure = view.messages.find((message) => message.kind === 'control' && message.outcome === 'failed')
   assert.equal(failure.reason, 'timeout')
+})
+
+
+test('control audit rows survive transcript trimming', async () => {
+  const store = new GroupStore({ file: join(await mkdtemp(join(tmpdir(), 'dsh-gt-audit-')), 'groups.json'), historyLimit: 50 })
+  const group = await store.write((draft) => {
+    const now = Date.now()
+    draft.groups.grp_trim = {
+      id: 'grp_trim',
+      name: 'Trim',
+      topic: '',
+      ownerSessionId: 'human',
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+      members: [
+        { sessionId: 'human', alias: 'human', role: 'human', duties: '', joinedAt: now },
+        { sessionId: 'session-secretary', alias: 'sec', role: 'Secretary', duties: '', joinedAt: now },
+      ],
+      messages: [],
+      audit: [],
+    }
+    return draft.groups.grp_trim
+  })
+  for (let index = 0; index < 12; index += 1) {
+    await store.write((draft) => {
+      appendControl(draft.groups.grp_trim, 'sec', {
+        fromSessionId: 'session-secretary',
+        action: 'note',
+        outcome: 'recorded',
+        taskId: `task_${index}`,
+        text: `note ${index}`,
+      }, 3)
+    })
+  }
+  const state = store.state.groups.grp_trim
+  assert.equal(state.messages.length, 3)
+  assert.equal(state.audit.length, 12)
 })

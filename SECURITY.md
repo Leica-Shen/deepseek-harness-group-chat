@@ -208,7 +208,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 80 个测试：
+当前 81 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -227,7 +227,7 @@ Group-Talk-L 的每个群消息都可能：
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：80/80 通过；
+- [x] `node --test test/*.test.mjs`：81/81 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -272,7 +272,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **80 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化）。
+新增测试后 **81 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化）。
 
 ### 真实对话验收
 
@@ -290,7 +290,7 @@ Group-Talk-L 的每个群消息都可能：
 - 群聊入口是原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；仅会话内徽标仍是 DOM 装饰，上游改版时可能安全消失；
 - 其余残余风险见第 6 节。
 
-当前结论：**2.0.3 的整屏 panel 已在本机 live 打开验证；2.1.0 的人类优先、秘书/组织者、委派与审计已有源码与 80 个测试覆盖，但 2.1 Host 与真实子代理 provider 仍需重启后验收。**
+当前结论：**2.0.3 的整屏 panel 已在本机 live 打开验证；2.1.0 的人类优先、秘书/组织者、委派与审计已有源码与 81 个测试覆盖，但 2.1 Host 与真实子代理 provider 仍需重启后验收。**
 ## 9.5 子代理委派安全（2.1）
 
 委派把“一个群消息”升级成“一个可以调用工具的子 Agent”，因此按高风险能力处理。
