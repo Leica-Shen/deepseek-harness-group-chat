@@ -236,3 +236,30 @@ test('per-message delivery mode overrides the deployment default', async () => {
   assert.equal(promptCalls[0].mode, 'steer')
   assert.equal(promptCalls[1].mode, 'queue')
 })
+
+test('secretary notes are disabled by config and delegation timeout disposes the run', async () => {
+  const { service } = await harness({ allowAgentNote: false })
+  const group = await service.create('human', {
+    name: 'No notes',
+    members: [{ sessionId: 'session-secretary', alias: 'sec', role: 'Secretary' }],
+  })
+  await assert.rejects(
+    () => service.note('session-secretary', group.id, 'blocked'),
+    /disabled|note/i,
+  )
+
+  const slow = await harness({ allowAgentDelegate: true, delegationTimeoutMs: 10 })
+  const slowGroup = await slow.service.create('human', {
+    name: 'Slow',
+    members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
+  })
+  slow.setResult(new Promise(() => {}))
+  await assert.rejects(
+    () => slow.service.delegate({ id: 'session-org' }, 'session-org', slowGroup.id, { task: 'slow' }),
+    /failed|timed out/i,
+  )
+  assert.equal(slow.disposed.length, 1)
+  const view = slow.service.listFor('human').find((entry) => entry.id === slowGroup.id)
+  const failure = view.messages.find((message) => message.kind === 'control' && message.outcome === 'failed')
+  assert.equal(failure.reason, 'timeout')
+})
