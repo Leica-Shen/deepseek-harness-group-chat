@@ -84,10 +84,10 @@ Host restarted and loaded **Group-Talk-L 2.2.0** (panel version line). At 980×7
 - ⚠️ 125% / 150% / 130% zoom was **not** captured: `Cmd +`, `Cmd =` and
   `Cmd + =` did not change this Harness build's page zoom; the app has no iOS-style
   zoom menu. Do not claim those zoom states.
-- ⚠️ `复制全文` fallback (`execCommand`) was wired, but the clipboard round-trip
-  was inconclusive in this session (system clipboard contained GBK bytes and the
-  composer paste test was empty). Re-test on a focused page; treat copy-full as
-  unverified until then.
+- ✅ `复制全文` was verified live through the Electron native clipboard: the
+  clipboard text starts with `@A` and contains the full 1104-character Chinese
+  message, not the 600-character preview. The old fallback path is kept for
+  non-Electron hosts.
 - ✅ Evidence saved in `评审证据/ui-2.2/` with per-image
   `<screenshot>.evidence.json` (host 2.2.0, client 2.2.0, 980×100, commit
   af4e0d3). Zoom is recorded as 1.0 because that is what was actually captured.
