@@ -380,3 +380,11 @@ test('the detail shows the timeout hint, nudge and open-target controls', () => 
   assert.ok(strings.includes('nudge'))
   assert.ok(strings.includes('openTarget'))
 })
+
+test('the host gate is 2.0.1, not just major 2', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  assert.equal(internals.versionAtLeast('1.5.0', [2, 0, 1]), false)
+  assert.equal(internals.versionAtLeast('2.0.0', [2, 0, 1]), false)
+  assert.equal(internals.versionAtLeast('2.0.1', [2, 0, 1]), true)
+  assert.equal(internals.versionAtLeast('2.1.0', [2, 0, 1]), true)
+})

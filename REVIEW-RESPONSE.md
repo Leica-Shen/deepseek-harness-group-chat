@@ -50,7 +50,7 @@ cap and `policyRecentMessages: 0` by default.
 ## P2 — version in the panel
 
 The authenticated GET response includes the package version and the group
-detail footer renders `Group-Talk-L v2.0.1`.
+detail footer renders `Group-Talk-L v2.0.2`.
 
 ## 1.5.0 follow-up
 
@@ -74,7 +74,7 @@ the person; participant tools still act for their session.
 
 ## Evidence
 
-- `npm test`: **65/65**
+- `npm test`: **68/68**
 - HTTP leave regression test (POST 200, member groups empty)
 - concurrent target-burst regression
 - stale-pending reconciliation test, and one proving a failed reconcile still resolves `ready()`

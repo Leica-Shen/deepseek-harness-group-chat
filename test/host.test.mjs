@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { apply } from '../lib/index.js'
+import { apply, buildTools } from '../lib/index.js'
 
 test('Host mount registers /group, installs member tools, and uninstalls on dissolve', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'dsh-group-talk-l-host-'))
@@ -99,13 +99,14 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
   assert.equal(tools.size, 0)
   await handler({ agent: agentA, rawInput: ' add @alice session-a Lead' })
   assert.deepEqual([...tools.keys()].sort(), [
-    'session-a:group_talk_create',
     'session-a:group_talk_history',
     'session-a:group_talk_leave',
     'session-a:group_talk_list',
-    'session-a:group_talk_manage',
     'session-a:group_talk_send',
   ])
+  // Disabled model management is not advertised at all: no schema cost.
+  assert.equal(tools.has('session-a:group_talk_create'), false)
+  assert.equal(tools.has('session-a:group_talk_manage'), false)
   const policy = sections.find((entry) => entry.id === 'session-a').definition
   assert.match(policy.text(), /"Review"/)
   assert.equal(policy.order, 600)
@@ -118,17 +119,6 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
   const policyB = sections.find((entry) => entry.id === 'session-b').definition
   assert.match(policyA.text(), /@bob \(Reviewer\)/)
   assert.match(policyB.text(), /You: @bob — Reviewer/)
-
-  const createTool = tools.get('session-a:group_talk_create')
-  await assert.rejects(
-    createTool.execute({ name: 'Model created' }, { agent: agentA }),
-    /disabled for model tools/u,
-  )
-  const manageTool = tools.get('session-a:group_talk_manage')
-  await assert.rejects(
-    manageTool.execute({ action: 'rename', name: 'Model renamed' }, { agent: agentA }),
-    /disabled for model tools/u,
-  )
 
   const sendTool = tools.get('session-a:group_talk_send')
   const sent = await sendTool.execute(
@@ -153,4 +143,15 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
   for (const effect of effects) {
     if (typeof effect === 'function') effect()
   }
+})
+
+test('model tool schemas follow allowAgentCreate and allowAgentManage', () => {
+  const names = (flags) => buildTools({
+    config: { allowAgentCreate: false, allowAgentManage: false, ...flags },
+  }).map((tool) => tool.name).sort()
+  const base = ['group_talk_history', 'group_talk_leave', 'group_talk_list', 'group_talk_send']
+  assert.deepEqual(names({}), base)
+  assert.deepEqual(names({ allowAgentCreate: true }), [...base, 'group_talk_create'].sort())
+  assert.deepEqual(names({ allowAgentManage: true }), [...base, 'group_talk_manage'].sort())
+  assert.equal(names({ allowAgentCreate: true, allowAgentManage: true }).length, 6)
 })

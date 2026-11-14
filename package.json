@@ -1,6 +1,6 @@
 {
   "name": "@local/group-talk-l",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "type": "module",
   "description": "Group-Talk-L: a full-area group chat for DeepSeek Harness where the person talks to existing sessions through role-tagged participants, with dedupe, fan-out caps, daily token budgets and no session owner.",
   "icon": "./icon.svg",

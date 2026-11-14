@@ -318,3 +318,25 @@ test('a legacy human alias still resolves @human and its own alias', async () =>
   const viaHuman = await service.send('session-b', { group: group.id, target: '@human', message: 'hello human alias' })
   assert.equal(viaHuman.deliveries[0].status, 'in-room')
 })
+
+test('a fast restart reconciles fresh pending rows too', async () => {
+  const { service, store, ctx } = await harness()
+  const group = await service.create('session-a', {
+    name: 'Fast restart',
+    members: [{ sessionId: 'session-b', alias: 'bob', role: 'Reviewer' }],
+  })
+  await service.send('session-a', { group: group.id, target: '@bob', message: 'in flight' })
+  await store.write((draft) => {
+    const message = draft.groups[group.id].messages.at(-1)
+    message.at = Date.now()
+    message.deliveries[0].status = 'pending'
+  })
+  const reloaded = new GroupService({
+    store,
+    ctx,
+    config: { ...service.config, pendingTimeoutMs: 120000 },
+    log: () => {},
+  })
+  await reloaded.ready()
+  assert.equal(reloaded.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'unknown')
+})

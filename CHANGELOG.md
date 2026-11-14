@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.2
+
+- Human-target wording is consistent everywhere: the policy rule no longer
+  says “do not send to @human”, help explains that @human is for participant
+  replies and is a self-target for a human sender, and the README matches.
+- Model tool schemas are filtered by `allowAgentCreate` / `allowAgentManage`
+  instead of registering a tool that throws; disabled management costs no
+  schema tokens, and the policy tool paragraph is conditional.
+- Startup reconciliation now marks every pending row, so a fast restart no
+  longer leaves fresh pending deliveries forever.
+- Delivery re-checks that the room still exists after a concurrent delete;
+  the cross-process window remains documented as out of scope.
+- The client host gate compares against 2.0.1 (semver), not just major 2.
+- 68 tests.
+
 ## 2.0.1
 
 - In-room delivery: messages addressed to the human operator now use the
