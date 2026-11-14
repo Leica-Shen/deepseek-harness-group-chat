@@ -1,5 +1,7 @@
 # Group-Talk-L · 会话群聊
 
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 53 tests · DeepSeek Harness Host + Web Client plugin
+
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
 Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控。
@@ -29,6 +31,8 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 | 解散群组 | `/group dissolve` 或面板「解散群组」：冻结成员与记录，保留只读查看 |
 | 删除群组 | `/group delete <群> confirm` 或面板「删除群组」：永久删除群组与记录 |
 | 安排各会话角色 | 建群时逐会话填写；群主可在成员行编辑角色与职责；也可 `/group role @别名 <角色>` |
+| 成员退出 | 非群主可 `/group leave` 或在面板「退出群聊」；群主需解散/删除 |
+| 模型管理边界 | 默认 `allowAgentCreate/allowAgentManage=false`：模型不能静默建群/加人；人类面板和命令不受影响 |
 | 保持 Harness 原有风格 | 原生 header slot、`Modal`/`Button`/`Input`/`Checkbox`/`Tag`/`StateDot`/`Tooltip`、主题 token、zh/en locale、`/group` slash command、scoped tools |
 | 防信息洪水 / Token 滥用 | fan-out 上限、发送冷却、重复抑制、滑动窗口突发上限、每日 Host/发送者/群/目标四层预算、prompt 硬上限、Web/历史响应上限、群数量上限 |
 
@@ -51,6 +55,8 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 ### 方式一：DSH 插件命令
 
 ```bash
+git clone https://github.com/Leica-Shen/dsh-group-talk-l.git
+cd dsh-group-talk-l
 dsh plugin --profile desktop add link:"$PWD"
 ```
 

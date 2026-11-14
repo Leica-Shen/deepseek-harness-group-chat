@@ -40,6 +40,7 @@ test('parses target shorthand and management forms', () => {
     member: '@bob',
     role: 'Lead reviewer',
   })
+  assert.deepEqual(parseGroupCommand(' leave'), { kind: 'leave', group: undefined })
   assert.deepEqual(parseGroupCommand(' delete Research confirm'), {
     kind: 'delete',
     group: 'Research',
@@ -97,6 +98,13 @@ test('the command drives the same durable service as the panel', async () => {
   assert.equal(sent.kind, 'success')
   assert.match(sent.text, /Sent to @bob/)
   assert.equal(calls.length, 1)
+
+  const left = await handler({ agent: { id: 'session-b' }, rawInput: ' leave' })
+  assert.equal(left.kind, 'success')
+  assert.match(left.text, /Left @bob/)
+  const ownerLeave = await invoke(' leave')
+  assert.equal(ownerLeave.kind, 'error')
+  assert.match(ownerLeave.text, /owner cannot leave|dissolve/i)
 
   const bad = await invoke(' delete')
   assert.equal(bad.kind, 'error')
