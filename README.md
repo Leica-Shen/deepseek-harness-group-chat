@@ -19,6 +19,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 - 想查参数：[/group 命令](#人类命令) · [配置表](#配置) · [测试矩阵](SECURITY.md#8-测试矩阵)
 - 想理解为什么：[DESIGN.md](DESIGN.md) · [SECURITY.md](SECURITY.md)
 - 想写同类插件：[PLUGIN-ANATOMY.md](docs/PLUGIN-ANATOMY.md) · [文档地图](docs/README.md)
+- 想核对评审整改：[REVIEW-RESPONSE.md](REVIEW-RESPONSE.md)
 
 ## 能力与需求对照
 
@@ -250,7 +251,7 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 - 模型工具默认不能建群/加人/改角色（`allowAgentCreate/allowAgentManage=false`），人类面板和 `/group` 命令仍可用；
 - 非群主可 `/group leave` 或面板退出；
 - 群消息信封明确标注 peer content 为不可信数据；prompt section `interpolate:false`，不执行消息里的插值/指令；
-- 数据目录 `0700`、`groups.json` `0600`；模型侧不返回 session id 和原始投递错误；
+- 每次持久化时强制数据目录 `0700`、`groups.json` `0600`；旧 live 进程未重启前目录可能仍显示 `0755`，下一次写入/重启后生效；模型侧不返回 session id 和原始投递错误；
 - **不会自动回传普通 assistant 回答**：需要成员显式调用 `group_talk_send`，避免泄露工具结果/私有上下文和无限循环。
 
 完整威胁模型与测试记录见 [SECURITY.md](SECURITY.md)。
@@ -298,6 +299,8 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `assumedTokensPerDelivery` | `800` | 50–100000 | 每次投递固定估算开销 |
 | `maxHistoryToolChars` | `12000` | 1000–200000 | 工具历史输出上限 |
 | `maxReadsPerAgentPerMinute` | `20` | 1–1000 | 模型每 Agent 每分钟读取工具上限，防止 history/list 循环烧 Token |
+| `replyNudgeAfterMs` | `120000` | 10000–86400000 | 等待多久后显示「催一下」 |
+| `pendingTimeoutMs` | `120000` | 10000–86400000 | 启动时将超时 pending 标为未确认 |
 | `uiMessageLimit` | `20` | 1–100 | Web 每群返回消息数 |
 
 调高任何预算前，请先读 [SECURITY.md](SECURITY.md)。
@@ -331,7 +334,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-53 个测试覆盖：
+54 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载；
 - 目标解析、角色编辑、所有权、解散/删除；
@@ -368,9 +371,9 @@ node --test test/*.test.mjs
 9. `group_talk_list` / `group_talk_history` 可被循环调用烧 Token；增加每 Agent 每分钟读取上限。
 10. 群消息在会话里只是普通气泡；增加 `【群聊】` 人类可读信封、客户端群消息徽标和“等待回复”提示。
 
-53 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
+54 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1；随后 1.4.2 增加催复、版本显示、pending 对账与文档修正。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
 
-剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.1` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
+剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.2` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
 
 ## 已知限制与残余风险
 
