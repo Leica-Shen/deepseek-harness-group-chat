@@ -16,3 +16,5 @@ Chinese is the primary product language; this page and [README.en.md](../README.
 4. Every send is checked and charged by the same guard: fan-out, cooldown, dedupe, burst and daily message/delivery/token budgets.
 5. Secretary and Organizer are duty labels. The Host enforces `group_talk_note` (secretary/organizer) and `group_talk_delegate` (organizer/owner, opt-in, audited).
 6. A delegated subagent is not a group member, gets no group tools, cannot delegate further, has a timeout and quota, and leaves audited control rows.
+
+- [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) — post-restart screenshot matrix and overlap/focus/copy checklist.

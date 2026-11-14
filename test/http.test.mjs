@@ -104,6 +104,8 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
   assert.equal(typeof listBody.usage.sender.messages, 'number')
   assert.equal(typeof listBody.help, 'string')
   assert.match(listBody.version, /^\d+\.\d+\.\d+$/u)
+  assert.equal(listBody.capabilities.priority, true)
+  assert.equal(listBody.capabilities.inRoom, true)
 
   const sent = await route.fetch(new Request('http://localhost/api/group-talk-l', {
     method: 'POST',

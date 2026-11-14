@@ -13,3 +13,5 @@ one file.
 
 When a behavior changes, update the matching quadrant instead of appending to
 an unrelated section.
+
+- [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) — post-restart screenshot matrix and overlap/focus/copy checklist.

@@ -501,3 +501,38 @@ test('long messages expose expand/copy controls and priority is visible', () => 
   assert.ok(strings.includes('expandMessage'))
   assert.ok(strings.includes('copyFull'))
 })
+
+
+test('priority is capability-gated in the composer hint', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const make = (supported) => render(React.createElement(internals.GroupDetail, {
+    group: detailGroup(),
+    sessionId: 'session-a',
+    busy: '',
+    notice: null,
+    error: null,
+    limits: { replyNudgeAfterMs: 120000 },
+    usage: null,
+    onSend: () => {},
+    onEditRole: () => {},
+    onRemoveMember: () => {},
+    onOpen: () => {},
+    onDissolve: () => {},
+    onDelete: () => {},
+    onAddMember: () => {},
+    onLeave: () => {},
+    onNudge: () => {},
+    onAudit: () => {},
+    onTogglePin: () => {},
+    pinned: false,
+    prioritySupported: supported,
+    version: '2.1.0',
+    t: (key) => key,
+    useSessions: (selector) => selector({ byId: {} }),
+  }), React.Fragment)
+  const unsupported = stringsIn(make(false))
+  const supported = stringsIn(make(true))
+  assert.ok(unsupported.some((value) => value.includes('priorityUnsupported')))
+  assert.ok(!supported.some((value) => value.includes('priorityUnsupported')))
+})
