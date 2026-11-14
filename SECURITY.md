@@ -1,6 +1,6 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：1.3.0  
+> 版本：1.4.0  
 > 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。  
 > 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
@@ -188,7 +188,7 @@ Group-Talk-L 的每个群消息都可能：
    群成员是同一操作者可见的会话；插件不提供跨用户隔离，也不做敏感信息扫描。不要在群消息中发送凭据。
 
 7. **模型自动回复**  
-   普通 assistant 回答不会自动中继，必须显式调用 `group_talk_send`。这降低循环风险，但也意味着成员可能忘记回复。
+   普通 assistant 回答不会自动中继，必须显式调用 `group_talk_send`。这是有意设计：自动转发 assistant 内容可能泄露工具输出、私有上下文或推理结果，并形成循环；面板会显示「等待回复」。
 
 8. **UI 轮询**  
    8 秒间隔不是实时；牺牲时效换取更低的读取频率。
@@ -265,6 +265,11 @@ Group-Talk-L 的每个群消息都可能：
 3. **侧栏按钮不可点击**：上游 section header 存在 `pointer-events: none` 继承，注入按钮的 click/hover 都不触发。显式添加 `pointer-events: auto; position: relative; z-index: 1` 后，真实鼠标点击可打开表单。
 4. **回复排队到回合结束**：默认投递模式是 `queue`，运行中的目标只能在本轮结束后看到群消息。改为默认 `steer`，等价于 DSH 的「插话」，在下一个 step 边界送达；`queue` 保留为显式配置。
 5. **tool 输出含 undefined**：旧 `summarize` 给 system 消息写了 `from: undefined` / `target: undefined`，Harness 的 lossless-JSON 输出校验拒绝。已按字段存在性构造 JSON，并增加递归 no-undefined 测试。
+6. **模型管理权限过宽**：默认 `allowAgentCreate/allowAgentManage=false`，模型工具不能静默建群/加人；人类面板和 `/group` 命令仍可。新增 `group_talk_leave`、`/group leave` 和 UI「退出群聊」。
+7. **target burst 竞态**：并发请求在 pending 阶段看不到已占用的 target 配额；现在 pending 也计入，并增加跨群并发回归。
+8. **模型输出泄露内部 id/错误**：send 的 deliveries 与 history 改为 alias/status + 通用错误；原始 session id 和错误仅留 UI/Host 日志。
+9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
+10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
 新增测试后 **53 个测试全绿**。
 

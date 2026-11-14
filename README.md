@@ -235,6 +235,25 @@ total     = perTarget × recipientCount
 
 这些数字来自 `test/protection.test.mjs` 的模拟 Host（fake Session controller、可注入时钟），不是对真实模型账单的测量。
 
+## 安全与滥用防护
+
+Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成本，默认四层保护：
+
+1. **单次发送**：fan-out ≤ 6、正文 ≤ 2000 字、3 秒发送者冷却、30 秒去重；
+2. **滑动窗口（60 秒）**：单发送者 8 条、单群 12 条、全 Host 20 条、单目标被唤醒 6 次、发送者/群/Host 估算 Token 12k/24k/60k；
+3. **每日 UTC 预算**：发送者/群/目标/Host 四层消息、投递和估算 Token；Host 默认 300 条 / 500 次 / 300k Token；
+4. **读取侧**：list/history 每 Agent 每分钟 20 次，prompt ≤ 3500 字，工具历史 ≤ 12000 字，Web 每群 ≤ 20 条。
+
+另外：
+
+- 模型工具默认不能建群/加人/改角色（`allowAgentCreate/allowAgentManage=false`），人类面板和 `/group` 命令仍可用；
+- 非群主可 `/group leave` 或面板退出；
+- 群消息信封明确标注 peer content 为不可信数据；prompt section `interpolate:false`，不执行消息里的插值/指令；
+- 数据目录 `0700`、`groups.json` `0600`；模型侧不返回 session id 和原始投递错误；
+- **不会自动回传普通 assistant 回答**：需要成员显式调用 `group_talk_send`，避免泄露工具结果/私有上下文和无限循环。
+
+完整威胁模型与测试记录见 [SECURITY.md](SECURITY.md)。
+
 ## 配置
 
 `cordis.patch.yml` 中的 row config（全部可省略）：
