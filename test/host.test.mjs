@@ -116,6 +116,17 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
   assert.match(policyA.text(), /@bob \(Reviewer\)/)
   assert.match(policyB.text(), /You: @bob — Reviewer/)
 
+  const createTool = tools.get('session-a:group_talk_create')
+  await assert.rejects(
+    createTool.execute({ name: 'Model created' }, { agent: agentA }),
+    /disabled for model tools/u,
+  )
+  const manageTool = tools.get('session-a:group_talk_manage')
+  await assert.rejects(
+    manageTool.execute({ action: 'rename', name: 'Model renamed' }, { agent: agentA }),
+    /disabled for model tools/u,
+  )
+
   const sendTool = tools.get('session-a:group_talk_send')
   const sent = await sendTool.execute(
     { target: '@bob', message: 'Please review the diff.' },
