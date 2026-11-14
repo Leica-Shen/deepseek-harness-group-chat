@@ -1,0 +1,66 @@
+# group-talk-l bundle patch: one Host row and its Web client half.
+#
+# Every field is optional; the defaults below are the documented values. The
+# store lives under $DSH_HOME, never inside a workspace. The limits are
+# deliberately conservative because one message can wake several model turns.
+- insert:
+    - id: group-talk-l
+      name: '@local/group-talk-l'
+      config:
+        enabled: true
+        # Human-in-the-loop management: model tools cannot create/add/remove by default.
+        allowAgentCreate: false
+        allowAgentManage: false
+        # Empty resolves $DSH_HOME/group-talk-l/groups.json.
+        dataFile: ''
+        # Bounded transcript: oldest entries are trimmed after each send.
+        historyLimit: 100
+        # Per-session active-group ceiling (prompt/tool overhead).
+        maxGroupsPerSession: 5
+        # Host-wide record ceiling, including dissolved groups.
+        maxGroupsTotal: 32
+        # Owner included.
+        maxMembersPerGroup: 16
+        # Recent transcript lines injected into each member's prompt section.
+        policyRecentMessages: 0
+        # Hard ceiling for the whole Group-Talk-L prompt section.
+        policyMaxChars: 3500
+        # steer = DSH-native "interject": a running member receives at the next
+        # step boundary, an idle member wakes normally. queue = wait for the
+        # member's next turn (opt-in for quiet workflows).
+        deliveryMode: steer
+        # Per-message body cap.
+        maxMessageChars: 2000
+        # One send may resolve to at most this many recipients.
+        maxRecipientsPerSend: 6
+        # Per-sender cooldown across all groups.
+        sendCooldownMs: 3000
+        # Identical sender/target/body inside this window is not delivered again.
+        dedupeWindowMs: 30000
+        # Sliding-window burst guards (per sender/group/Host/target, estimated tokens).
+        burstWindowMs: 60000
+        maxMessagesPerSenderPerBurst: 8
+        maxMessagesPerGroupPerBurst: 12
+        maxMessagesPerHostPerBurst: 20
+        maxDeliveriesPerTargetPerBurst: 6
+        maxEstimatedTokensPerSenderPerBurst: 12000
+        maxEstimatedTokensPerGroupPerBurst: 24000
+        maxEstimatedTokensPerHostPerBurst: 60000
+        # Daily, UTC-reset budgets.
+        dailyMessagesPerHost: 300
+        dailyDeliveriesPerHost: 500
+        dailyEstimatedTokensPerHost: 300000
+        dailyMessagesPerSender: 30
+        dailyDeliveriesPerSender: 60
+        dailyMessagesPerGroup: 60
+        dailyDeliveriesPerGroup: 120
+        dailyDeliveriesPerTarget: 20
+        # Conservative estimated prompt allowance; not a billing statement.
+        dailyEstimatedTokensPerSender: 60000
+        dailyEstimatedTokensPerGroup: 120000
+        dailyEstimatedTokensPerTarget: 30000
+        assumedTokensPerDelivery: 800
+        # Model-facing history and Web panel bounds.
+        maxHistoryToolChars: 12000
+        maxReadsPerAgentPerMinute: 20
+        uiMessageLimit: 20

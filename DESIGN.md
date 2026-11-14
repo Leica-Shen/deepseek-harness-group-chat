@@ -1,0 +1,268 @@
+# 设计：Group-Talk-L
+
+## 1. 问题
+
+Harness 的 Session 是天然隔离的：每个会话有自己的日志、模型选择、工作区和上下文。用户已经有多个正在进行的会话，却缺少一种“把它们组织起来”的方式：
+
+- 不想把多个工作流合并进同一个 Session（会污染上下文、模型和上下文窗口）；
+- 想让 A 会话把问题发给 B 会话，B 在自己的工作区里处理，再把结论发回 A；
+- 想在群组层面安排角色（负责人、执行者、审阅者），而不是在每个会话里重复自然语言约定；
+- 想在不重启、不重写 Harness 的前提下拥有这套能力。
+
+Agent Teams 解决的是“从 Lead 派生 teammate”的问题；Session References 解决的是“把另一个会话的快照带进当前 prompt”的问题。两者都不是“让已有独立会话组成一个可持续对话的群组”。本插件补的就是这一层。
+
+## 2. 设计选择
+
+### 2.1 群组不是新的会话
+
+没有创建一个“群聊 Session”，也没有复制成员消息到新上下文。群组是一个 **成员关系 + 共享 transcript + 路由规则** 的领域对象：
+
+- 成员继续在自己的 Session 里推理、使用自己的工具和工作区；
+- 消息以普通用户消息投递到目标 Session，目标仍然是同一个 Agent；
+- 群组只保存“谁在群里、角色是什么、发过什么、投递结果”，不保存成员的完整对话；
+- 因此不同成员的模型、上下文窗口、权限、工作区互不干扰。
+
+这比“群聊机器人把所有人的回复汇总到一个新会话”更贴近 Harness 的 Session 模型，也避免了二次模型调用和上下文复制。
+
+### 2.2 触发协议
+
+统一使用 `/group` 命名空间，避免和已有 `@` 文件/会话引用、`#` Markdown 标题冲突：
+
+| 写法 | 语义 |
+| --- | --- |
+| `/group @bob <消息>` | 发给别名 `bob` 的成员 |
+| `/group #Reviewer <消息>` | 发给所有角色为 `Reviewer` 的其他成员 |
+| `/group * <消息>` | 发给所有其他成员 |
+| `/group send <群> @bob <消息>` | 多群场景显式指定群 |
+
+`/group` 是 Human command，不消耗模型 turn；模型侧对应 `group_talk_send`，语义完全一致。`@`/`#`/`*` 是目标选择器，不是普通文本 mention；这样不会误触文件引用或 Session 引用。
+
+### 2.3 成员如何知道协议
+
+这是需求里最容易被忽略、但决定插件是否可用的部分。三种告知方式叠加：
+
+1. **Scoped system prompt**：只在该成员 Agent 的 scope 注册 `group-talk-l:policy`，不污染非成员；
+2. **Scoped tools**：只在该成员 scope 注册 6 个工具，工具不可用时模型不会误以为能发；
+3. **投递 envelope**：每条消息以「【群聊 / Group chat】群名」开头，带 `@发送者（角色）→ @收件人（角色）`、机器可读 JSON 和一行回复提示。首两行给人看，JSON 给模型解析；即使成员没有读过 policy，也能从当下这条消息知道怎么回。
+
+prompt section 的动态函数在每次模型请求时重新渲染，所以角色修改、成员变化、解散/删除后，下一次请求立即反映；撤销成员时 scoped 注册立即 dispose。
+
+`interpolate: false` 是安全细节：群消息正文可能包含 `{{...}}`，如果走 system-prompt 变量插值，会让一次消息投递导致整个模型请求失败，甚至读取未预期变量。群消息是 peer content，禁止插值。
+
+### 2.4 权限
+
+- 群主由 `ownerSessionId` 唯一确定，不接受 role 字符串冒充。
+- 群主独占管理操作；普通成员只能读/发。
+- 角色是**收件人选择器**，不是权限位。这是有意的：如果把 role 当权限，任何会话都能通过改自己的 role 提权；角色语义应该由群主分配、但只用于路由和职责说明。
+- `origin: subagent` 的委派子代理不允许入群，因为普通 Session controller 对子代理的投递路径不同；普通 fork/child 会话（有 `parentSession` 但 `origin` 不是 `subagent`）可以加入，明确拒绝委派子代理比“显示成功但无人处理”好。
+
+### 2.5 投递与记账语义
+
+`send` 的持久化顺序是：
+
+1. 先做重复抑制；
+2. 在同一个 store 事务中检查 fan-out、冷却、发送者/群/目标每日预算与估算 Token，并记账；
+3. append 消息（`deliveries: pending`）并原子落盘；
+4. 对每个目标调用 Session controller，并向其 `prompt(request, signal)` 传入 30 秒 `AbortSignal.timeout`；
+5. 将结果写回 `deliveries`；默认 `steer` 让运行中目标在下一个 step 收到。
+
+任意预算检查失败都会让整个事务不提交：消息不出现、不投递、也不消耗额度。重复抑制返回上一条已接纳消息，避免重试循环。
+
+这带来两个性质：
+
+- **不会出现“消息只存在于内存”**：即使 Host 在投递中途崩溃，重启后 transcript 仍能看到这条消息（状态 pending）；
+- **不假装送达**：`delivered` 只代表目标 inbox 接纳；目标模型是否运行、是否回复是另一回事。
+
+`requestId` 固定为消息 id + 目标 session id，复用了 Session controller 的 inbox 去重；重试同一消息不会产生重复用户消息。
+
+`steer` 是默认模式，等价于 DSH 输入框的「插话」：对运行中的目标在**下一个 step 边界**投递，不中断当前工具执行，也不等整轮结束；对不活跃的目标仍会 resume 并启动。`queue` 保留为显式配置，适合希望严格等对方完成本轮的安静工作流。
+
+每个消息还会经过滑动窗口 burst 限制（发送者/群/Host/目标）与 Host 级日预算；这些限制在写入 transcript 前原子检查，避免多个群并行时把同一会话淹没。
+
+### 2.6 解散与删除
+
+- **解散**：`status: dissolved`，成员和 transcript 保留，append 一条系统记录，撤销所有成员的 scoped tools/policy。UI 变为只读，可继续查看，可删除。
+- **删除**：永久移除 state 中的群及其 transcript；撤销成员注册。UI 有二次确认，命令要求 `confirm`。
+
+这是两种不同的用户意图：解散是“停止协作但保留审计”，删除是“彻底清除”。分开实现而不是只做软删除，避免 `groups.json` 无限积累用户以为已经删掉的数据。
+
+### 2.7 Web 与 Host 的边界
+
+- **Host** 拥有全部领域逻辑、持久化、权限和投递；Client 没有写权限旁路。
+- Browser 通过同源 `/api/group-talk-l` 访问，使用 Connection 服务的认证 Fetch 路由，不新增 token 或未认证 HTTP 端口。
+- 路由使用 JSON、`no-store`、`nosniff`、请求体大小上限；错误只返回稳定的 code + 已净化的 message。
+- Client 只做选择、展示和发起操作；每次操作都带当前 `sessionId`，Host 仍重新校验成员身份/群主身份。
+
+### 2.8 为什么轮询而不是 WebSocket
+
+选择 8 秒轮询，原因：
+
+- 群组变更频率低，8 秒延迟可接受，同时降低读取频率；
+- 页面隐藏时暂停轮询；
+- 不需要新增 stream、重连、背压、事件权限等一整套协议；
+- 群组 transcript 是低频数据，轮询成本远低于维护一个实时通道；
+- 后续可在 Connection 上加流，而不改领域层。
+
+## 3. 组件
+
+```text
+Browser
+  GroupTalkLAction (header action slot)
+    └─ GroupCenter
+        ├─ GroupList / GroupDetail
+        ├─ CreateForm / AddMemberModal / RoleModal / ConfirmModal
+        └─ fetch /api/group-talk-l
+
+Host
+  apply()
+    ├─ GroupStore ............ atomic JSON + usage ledger under $DSH_HOME
+    ├─ GroupService .......... membership, permissions, delivery, transcript
+    ├─ guard.js .............. dedupe, cooldown, fan-out, daily quotas
+    ├─ scoped tools .......... 5 group_talk_* per member Agent
+    ├─ scoped prompt section . dynamic roster/roles/recent transcript
+    ├─ /group command ........ create, list, send, role, dissolve, delete...
+    └─ connection.fetch ...... GET/POST /api/group-talk-l
+```
+
+### 关键不变量
+
+1. 一个群至少有一个成员，且 owner 必须是成员；
+2. 群内 alias 忽略大小写唯一；同一 session 只能出现一次；
+3. 只有 owner 能改变群结构或删除群；
+4. 只有 active 群能 send；已解散群只读；
+5. 消息正文、角色、名称、别名都有长度上限与控制字符清理；
+6. 群数据只落在 `$DSH_HOME`，不写工作区；
+7. scoped 注册的生命周期与成员关系绑定，成员被移除后不残留工具；
+8. 群消息正文永不参与 system-prompt 变量插值；
+9. 每条消息在写入前必须通过并记账统一的 budget；重复消息不产生第二次投递；
+10. 群/成员/prompt/展示都受硬上限约束，不能由单个会话无限扩张。
+
+## 4. 数据模型
+
+```ts
+interface GroupState {
+  version: 1
+  groups: Record<string, Group>
+  usage: UsageLedger
+}
+
+interface UsageLedger {
+  day: string // YYYY-MM-DD UTC
+  senders: Record<string, Counter>
+  groups: Record<string, Counter>
+  targets: Record<string, Counter>
+  lastSend: Record<string, number>
+}
+
+interface Counter {
+  messages: number
+  deliveries: number
+  tokens: number
+}
+
+interface Group {
+  id: string
+  name: string
+  topic: string
+  ownerSessionId: string
+  status: 'active' | 'dissolved'
+  createdAt: number
+  updatedAt: number
+  dissolvedAt?: number
+  members: Member[]
+  messages: TranscriptEntry[]
+}
+
+interface Member {
+  sessionId: string
+  alias: string
+  role: string
+  duties: string
+  joinedAt: number
+}
+
+type TranscriptEntry = {
+  id: string
+  kind: 'message' | 'system'
+  at: number
+  fromSessionId?: string
+  fromAlias?: string
+  target?: string
+  text: string
+  estimatedTokens?: number
+  deliveries: Delivery[]
+}
+
+interface Delivery {
+  sessionId: string
+  alias: string
+  status: 'pending' | 'delivered' | 'failed'
+  error?: string
+}
+```
+
+`messageTotal` 只在访问视图中出现，表示当前保留的 transcript 条数；`historyLimit` 裁剪只发生在发送追加时。Web 只取 `uiMessageLimit` 条，工具历史再受 `maxHistoryToolChars` 限制。
+
+## 5. UI 风格
+
+- 入口使用 `conversation.session.header.actions` slot，与 Agent Teams 的入口同层，不新增全局导航；由于侧栏「工作区」标题没有 additive slot，额外用一个原生主题色小按钮装饰在标题右侧，点击后通过 `group-talk-l:create` 事件打开同一个建群 modal；
+- 触发器是 `Button variant="ghost" size="sm"` + `IconUsersOutlineRegular`，与现有 header 控件同高；
+- 弹层使用共享 `Modal`，两栏（群列表/详情）布局，窄屏自然压缩；
+- 颜色全部走 `--dsw-alias-*` / `--dsw-elevation-*` / `--dsw-radius-*`，不引入硬编码品牌色；
+- 危险操作使用 `--dsw-alias-state-error-primary`，但仅用于删除/失败；
+- zh/en 字典通过 `ctx.locale.register`，所有文案走 `t()`；
+- 空态、加载态、错误态均使用 `StateDot` / 原生文字，不用自绘 spinner 或 toast 系统；
+- 操作失败留在当前面板，不关闭用户正在填写的表单。
+
+## 6. 失败模式
+
+| 失败 | 行为 |
+| --- | --- |
+| `groups.json` 损坏 | 移动到 `.corrupt-<timestamp>`，空状态启动，日志告警 |
+| 读文件失败 | 拒绝写入，避免覆盖；命令/HTTP 返回错误 |
+| 成员会话不可见 | 创建/添加时拒绝；若 list 本身失败，仅记录并放行（list 是额外保护，不是唯一真源） |
+| 目标会话已被归档 | Session controller 可能接纳但 turn 被 archived gate 阻止；transcript 记录 delivered，UI 仍可通过成员跳转查看 |
+| 预算超限 | 在写入前返回 `rate-limited` / `quota-exceeded` / `fanout-exceeded`；消息不存在、未投递、未记账 |
+| 发送太快 | 全局 `sendCooldownMs` 拒绝；等待后重试 |
+| 重复重试 | 返回 `deduplicated`，不产生第二次投递 |
+| 目标投递失败 | transcript 记录 `failed` + error；发送命令/工具返回失败列表，不回滚已存消息；额度已记账 |
+| delivery 回写失败 | 日志告警；消息仍在 transcript 中，状态 pending |
+| 进程在投递中途崩溃 | 重启后消息为 pending，不自动重发（避免重复） |
+| 群在发送中途被删除 | delivery 回写跳过；send 返回已生成的结果 |
+| 角色被改名/移除 | 下一次 prompt assembly 使用最新 state；`#role` 找不到目标时返回可用角色列表 |
+
+## 7. 测试策略
+
+- `store.test.mjs`：名称/别名/消息校验、引用解析、原子持久化、损坏旁置、transcript 裁剪、`$DSH_HOME` 路径；
+- `service.test.mjs`：建群、按 alias/role/all 发送、self-target、非成员、owner-only、角色编辑、解散/删除、子代理拒绝、持久化重载；
+- `policy.test.mjs`：成员 prompt、非成员空 policy、envelope、help/history；
+- `command.test.mjs`：slash grammar、`confirm` 删除、命令驱动真实 service；
+- `host.test.mjs`：Host `apply` 注册 `/group`、按成员安装 6 个工具和 prompt section、发送、解散后卸载；
+- `client.test.mjs`：通过 `window.__ModuleLoader__` 装载 client bundle、注册 locale/stylesheet/header slot；
+- `client-render.test.mjs`：初始空态、群详情、创建页的渲染 smoke test；
+- `http.test.mjs`：认证 Fetch 路由、limits/usage、429 映射；
+- `protection.test.mjs`：无保护放大基线、fan-out、冷却、去重、sender/group/target/Token 预算、群膨胀、prompt/UI/历史上限、账本持久化；
+- `config.test.mjs`：默认值与非法值回退。
+
+## 8. 明确不做
+
+- 不做自动回复中继；
+- 不做群内文件/图片附件；
+- 不做群主转移；
+- 不做跨 Host 进程锁；
+- 不做基于真实账单的 token 计量（采用保守估算）；
+- 不做群消息内容审核；
+- 不做真实“群聊 Session”或消息回溯重放到新上下文；
+- 不做角色权限继承；
+- 不做未读/已读/在线状态。
+
+这些都可以在领域层之上增量添加，而不需要推翻当前模型。
+
+## 9. 可扩展点
+
+1. `autoRelay`：当一次目标 turn 由群消息触发时，把该 turn 最终 assistant 文本作为一条群消息回给发送者；需要 trip 计数和“仅一层”防循环。
+2. 未读游标：按成员记录 lastReadSeq，UI 显示 badge；不影响存储格式。
+3. 群主转移：owner 只能转给现有成员，并 append 系统记录；与现有 owner-only 检查兼容。
+4. 附件：复用 `ctx.attachments` 或仅允许文件路径引用；需要权限和 prompt 预算。
+5. 实时：在 Connection 上注册 stream，替代 8 秒轮询。
+6. 角色目录：把自由文本角色改为可配置预设，但底层仍存字符串，迁移简单。

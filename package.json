@@ -1,0 +1,65 @@
+{
+  "name": "@local/group-talk-l",
+  "version": "1.3.0",
+  "type": "module",
+  "description": "Group-Talk-L: guarded cross-session groups for DeepSeek Harness with role assignment, @alias/#role/* routing, dedupe, fan-out caps and daily token budgets.",
+  "icon": "./icon.svg",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "icon.svg",
+    "README.md",
+    "DESIGN.md",
+    "SECURITY.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "docs"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-bundle",
+    "dsh-plugin",
+    "group-talk-l",
+    "cross-session",
+    "multi-agent"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ]
+    }
+  },
+  "license": "MIT",
+  "author": "Group-Talk-L contributors",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "for f in lib/*.js; do node --check \"$f\"; done"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Leica-Shen/dsh-group-talk-l.git"
+  },
+  "homepage": "https://github.com/Leica-Shen/dsh-group-talk-l#readme",
+  "bugs": {
+    "url": "https://github.com/Leica-Shen/dsh-group-talk-l/issues"
+  }
+}
