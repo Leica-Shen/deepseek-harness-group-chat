@@ -103,6 +103,20 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 - 群组 transcript 是低频数据，轮询成本远低于维护一个实时通道；
 - 后续可在 Connection 上加流，而不改领域层。
 
+### 2.9 人类优先与审计（2.1）
+
+- 人类消息使用 `priority: "human"` 的 envelope，按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。
+- 人类发送绕过 target 冷却、target burst、target 日投递/Token 上限（`humanBypassTargetCaps`），但仍计入 group/Host/sender 预算，避免变成无限广播总线。理由：人的一句纠正不能被某个成员的日额度挡住；群级/全局预算仍防止滥用。
+- `kind: "control"` 的 transcript 行保存 `action/taskId/outcome/reason/parentRequestId/supersededBy`。审计视图只读展示这些行与失败/未确认投递；人类不需要依赖模型转述。
+- 面板的「保持打开」只保护“自动切换”场景：面板打开期间写入 pin；用户在面板外的 pointerdown 或「返回对话」会清除 pin，因此显式导航不会被弹回。
+
+### 2.10 子代理委派（2.1）
+
+- 只在 organizer/owner 成员的 live Agent 下 `subagents.start`；`maxDepth: 0`，deny 全部 `group_talk_*`，结果截断，超时 `AbortController`，运行结束 `dispose()`。
+- 子代理不是群成员，不注入 group policy，不进入成员列表；它的 start/complete/fail 只作为 control 行进入群记录。
+- `allowAgentDelegate` 默认 false；开启后还需要 organizer 角色、live parent、每日配额。人类面板的「委派子代理」走 `delegateForHuman`，Host 先找 live organizer；找不到就 fail closed，不假装成功。
+- 委派不是 task/ack 控制层的替代：2.1 仍没有 per-message `queue/steer` 选择、`interrupt`、`supersede`；这些是 2.2 的控制层。
+
 ## 3. 组件
 
 ```text

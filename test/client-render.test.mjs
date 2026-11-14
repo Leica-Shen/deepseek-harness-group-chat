@@ -388,3 +388,81 @@ test('the host gate is 2.0.1, not just major 2', () => {
   assert.equal(internals.versionAtLeast('2.0.1', [2, 0, 1]), true)
   assert.equal(internals.versionAtLeast('2.1.0', [2, 0, 1]), true)
 })
+
+test('secretary and organizer presets are available to the role UI', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  const ids = internals.ROLE_PRESETS.map((preset) => preset.id)
+  assert.ok(ids.includes('secretary'))
+  assert.ok(ids.includes('organizer'))
+  assert.match(internals.ROLE_PRESETS.find((preset) => preset.id === 'secretary').dutiesZh, /日志|回退/)
+  assert.match(internals.ROLE_PRESETS.find((preset) => preset.id === 'organizer').dutiesZh, /调度|冲突/)
+})
+
+test('control entries render in the transcript and the audit view', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const group = detailGroup({
+    messages: [{
+      id: 'ctl_1',
+      kind: 'control',
+      at: 10,
+      action: 'delegate',
+      outcome: 'completed',
+      fromAlias: 'org',
+      text: 'Delegation task_1 completed: done.',
+      deliveries: [],
+    }],
+    messageTotal: 1,
+  })
+  const tree = render(React.createElement(internals.AuditView, {
+    group,
+    onBack: () => {},
+    t: (key) => key,
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.some((value) => value.includes('controlDelegate')))
+  assert.ok(strings.includes('Delegation task_1 completed: done.'))
+  assert.ok(strings.includes('auditTitle'))
+})
+
+test('the delegation form renders its task, label and warning', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const tree = render(React.createElement(internals.DelegateModal, {
+    onStart: () => {},
+    onClose: () => {},
+    busy: '',
+    error: null,
+    t: (key) => key,
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.includes('delegateTask'))
+  assert.ok(strings.includes('delegateHint'))
+})
+
+test('the group list shows a flat preview and a collapse control', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const groups = [{
+    id: 'g1',
+    name: 'Alpha',
+    status: 'active',
+    members: [{ sessionId: 'human' }],
+    me: { sessionId: 'human', alias: 'human' },
+    messages: [{ kind: 'message', fromAlias: 'bob', text: 'Latest preview text', at: 1 }],
+  }]
+  const tree = render(React.createElement(internals.GroupList, {
+    groups,
+    selectedId: 'g1',
+    unreadById: {},
+    loading: false,
+    error: null,
+    onSelect: () => {},
+    onCreate: () => {},
+    onRetry: () => {},
+    t: (key) => key,
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.some((value) => value.includes('Latest preview text')))
+  assert.ok(strings.includes('collapseGroups') || strings.includes('▾'))
+})

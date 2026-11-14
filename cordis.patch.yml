@@ -11,6 +11,17 @@
         # Human-in-the-loop management: model tools cannot create/add/remove by default.
         allowAgentCreate: false
         allowAgentManage: false
+        # Audited subagent delegation (organizer/owner only); off by default.
+        allowAgentDelegate: false
+        # Secretary/organizer audited notes; low risk, on by default.
+        allowAgentNote: true
+        # Empty = first registered subagent provider.
+        delegationProvider: ''
+        delegationTimeoutMs: 120000
+        maxDelegationsPerDay: 3
+        maxDelegationChars: 6000
+        # Human messages bypass target cooldown/caps; group/global budgets remain.
+        humanBypassTargetCaps: true
         # Empty resolves $DSH_HOME/group-talk-l/groups.json.
         dataFile: ''
         # Bounded transcript: oldest entries are trimmed after each send.

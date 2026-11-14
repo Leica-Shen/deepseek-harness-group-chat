@@ -1,14 +1,30 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 68 tests · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **78 tests** · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
 Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控。
 
+## 2.1 新增
+
+- **人类信息优先**：人类消息按“用户指令”投递，不按不可信 peer content；人类发送绕过目标冷却/目标日上限（群与 Host 预算仍保留），所有失败和审计对面板可见。
+- **审计视图**：`kind: "control"` 的委派、秘书记录、失败投递集中展示；人类可以看到一切，不依赖模型转述。
+- **秘书 / 组织者**：秘书写审计日志与回退记录（`group_talk_note`）；组织者做任务调度与子代理委派（`group_talk_delegate`）。角色仍是职责标签，不是权限位。
+- **有界子代理委派**：仅在 live organizer/owner Agent 下启动；`maxDepth: 0`、禁用全部 `group_talk_*` 工具、超时、每日配额、结果截断、`delegation started/completed/failed` 审计；默认关闭 `allowAgentDelegate`。
+- **群聊面板稳定性**：群列表改为可展开的对话列表（含最后一条预览），「保持打开」在消息触发自动切换后把人类拉回房间；面板级错误边界不再把用户丢回普通对话；草稿与选中群在切换后恢复；可创建空房间。
+- **视觉**：扁平列表、角色/参与者行、审计与委派操作、消息/控制行、窄屏与暗色 token 收敛；去掉旧卡片感与重复描边。
+
+## 2.1 仍然不做（明确写清）
+
+- 不做自动回传普通 assistant 回答；
+- 不做后台静默打断：`interrupt`/`cancel` 仍是 2.1 控制层候选，当前只有 `steer` 的 step 边界投递；
+- 跨进程删群窗口不在单进程 store 的保证内；
+- 子代理不加入群、不读取群 transcript、不能继续委派。
+
 - **像普通对话一样使用**：左侧边栏有「群聊」入口（未读红点），点开后在主区域占满整屏，不再是弹窗；
 - **你直接说话**：面板与 `/group` 发出的消息以「你」（`@human`）署名，不再借用某个会话的身份；
-- 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员，或自定义）分工；没有会话级的「群主」，房间由你管理；
+- 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员 / 秘书 / 组织者，或自定义）分工；没有会话级的「群主」，房间由你管理；
 - 建群时只选参与者，不预选「当前会话」；
 - 群消息在参与者会话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
 - 人类操作者的消息是 in-room：写入群记录、面板可见，但不唤醒任何会话，也不计入投递/Token 预算；
@@ -270,6 +286,13 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `dataFile` | `""` | path | 空表示 `$DSH_HOME/group-talk-l/groups.json` |
 | `allowAgentCreate` | `false` | bool | 模型工具不能建群；人类面板与 `/group new` 不受影响 |
 | `allowAgentManage` | `false` | bool | 模型工具不能增删成员/改角色；人类面板与命令不受影响 |
+| `allowAgentDelegate` | `false` | bool | 是否允许 organizer/owner 通过 `group_talk_delegate` 委派子代理；默认关闭 |
+| `allowAgentNote` | `true` | bool | 是否允许秘书/组织者写 `group_talk_note` 审计记录 |
+| `delegationProvider` | `""` | string | 子代理 provider；空表示使用第一个已注册 provider |
+| `delegationTimeoutMs` | `120000` | 10000–600000 | 单次子代理委派超时 |
+| `maxDelegationsPerDay` | `3` | 0–50 | 每个发送者的每日委派次数；0 关闭 |
+| `maxDelegationChars` | `6000` | 500–50000 | 委派任务与结果回传的字符上限 |
+| `humanBypassTargetCaps` | `true` | bool | 人类消息是否绕过目标冷却/目标日上限（群与 Host 预算仍保留） |
 | `historyLimit` | `100` | 20–500 | 每群保留记录条数 |
 | `maxGroupsPerSession` | `5` | 1–50 | 每个成员最多活跃群数 |
 | `maxGroupsTotal` | `32` | 1–500 | Host 级群记录上限（含解散） |
@@ -338,30 +361,33 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-68 个测试覆盖：
+78 个测试覆盖：
 
-- 状态校验、原子持久化、损坏旁置、usage 账本重载；
+- 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
-- prompt/envelope 边界与 `interpolate:false`；
+- prompt/envelope 边界与 `interpolate:false`；人类消息的 `priority:"human"` 与 agent 的 untrusted peer 边界；
 - 命令解析与真实 service 驱动；
 - Host 挂载、scoped 工具安装/卸载、认证 Fetch 路由；
-- Client bundle 装载、`main` 面板与 `sidebar.panellist` 注册、空态/详情/创建页渲染；
+- Client bundle 装载、`main` 面板与 `sidebar.panellist` 注册、空态/详情/创建页渲染、控制行/审计/委派表单/可展开列表；
 - 等待推导、未读水位与侧栏入口；
-- **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化。
+- **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化；
+- **2.1 安全**：人类优先绕过目标上限、秘书角色门禁、委派角色/深度/工具过滤/超时/配额/结果截断/`dispose`、control 行注入边界。
 
-## 验证状态（2.0.3）
+## 验证状态（2.1.0）
 
 自动化验证（源码，本机）：
 
-- `node --test test/*.test.mjs`：**68/68**；
+- `node --test test/*.test.mjs`：**78/78**；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
-- 等待推导、未读水位、列表徽标、对账容错均有直接覆盖。
+- 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
+- 2.1 的人类优先、秘书/组织者、委派与审计均有独立用例。
 
 尚未验证：
 
-- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.0.3 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
-- 2.0.3 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
+- 源码已是 2.1.0，但 live Host 仍需要重启一次才会加载 2.1 的 Host 半；当前本机已打开 2.0.3 Host + 2.1 client 的面板做视觉/交互验证，演示了「新消息自动切换后保持打开」的回归；
+- 子代理委派的真实 provider 需要在本机 Harness 重启后、由组织者会话实际执行一次；当前测试使用 fake provider 验证权限、审计、超时与 `dispose`；
+- 跨进程删群窗口、真实多 Host 锁仍不在单进程 store 的保证内。
 
 历史（1.4.x）：桌面自检曾验证页头按钮、侧栏图标、真实双向投递与 `steer`，并修复了 10 个真实问题（AbortSignal、`subagent: null`、`pointer-events`、默认 `queue`、`group_talk_list` JSON、sessionId 泄露、target burst 并发、模型建群门禁、读取限速、群消息徽标）。这些结论对 1.4.x 有效，但不再描述 2.0.0 的整屏面板。
 

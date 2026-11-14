@@ -1,6 +1,6 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：2.0.3 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。
+> 版本：2.1.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本、人类优先、秘书/组织者、子代理委派。
 >
 > 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
@@ -208,7 +208,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 68 个测试：
+当前 78 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -222,11 +222,12 @@ Group-Talk-L 的每个群消息都可能：
 | `client-render.test.mjs` | 空态/详情/创建页渲染、等待推导、未读计数与已读水位 |
 | `protection.test.mjs` | 基线放大、fan-out、冷却、去重、sender/target/group/token 预算、群膨胀、prompt/历史/UI 上限、账本持久化 |
 | `security.test.mjs` | 目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、0600/0700 |
+| `security-2.test.mjs` | 人类优先、秘书角色、委派角色/深度/工具过滤/配额/`dispose`、control 持久化 |
 | `config.test.mjs` | 默认值、steer、burst/host 限值与非法值回退 |
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：68/68 通过；
+- [x] `node --test test/*.test.mjs`：78/78 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -271,7 +272,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **68 个测试全绿**。
+新增测试后 **78 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化）。
 
 ### 真实对话验收
 
@@ -284,12 +285,31 @@ Group-Talk-L 的每个群消息都可能：
 
 ### 剩余风险 / 待重启项
 
-- 当前 Host 进程仍运行旧模块 1.5.0；源码与测试（本地 `v2.0.3`）已包含 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、群聊徽标、读取限速与 `group_talk_list` JSON 修复。**下一次 Harness 重启后加载到 live**。新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”；当前群消息足够，实测列表可用；
+- 当前 live Host 为 2.0.3（群面板版本实测）；源码与测试（本地 `v2.1.0`）新增人类优先、秘书/组织者、委派与审计。**下一次 Harness 重启后加载 2.1 Host**；2.1 的子代理委派需要真实 provider 再验收一次。
 - `computer-use` 在热重载期间仍报 duplicate service；这是独立插件的非幂等注册问题，重启后确认；
 - 群聊入口是原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；仅会话内徽标仍是 DOM 装饰，上游改版时可能安全消失；
 - 其余残余风险见第 6 节。
 
-当前结论：**1.4.x 的真实双会话投递、页头按钮与侧栏入口已验证；2.0.3 的人类操作者模型、整屏 panel 与 `sidebar.panellist` 入口已有源码与测试覆盖，但尚未在 live 页面点击验证。live Host 仍运行旧模块，重启后启用 1.5.0/2.0.3 的全部新防护与 UI；在那之前不能宣称 live 已完全升级。**
+当前结论：**2.0.3 的整屏 panel 已在本机 live 打开验证；2.1.0 的人类优先、秘书/组织者、委派与审计已有源码与 78 个测试覆盖，但 2.1 Host 与真实子代理 provider 仍需重启后验收。**
+## 9.5 子代理委派安全（2.1）
+
+委派把“一个群消息”升级成“一个可以调用工具的子 Agent”，因此按高风险能力处理。
+
+| 威胁 | 控制 |
+| --- | --- |
+| 任意成员随意开子代理、烧 Token | `allowAgentDelegate` 默认 **false**；仅 organizer/owner 可调用；每发送者每日 `maxDelegationsPerDay`（默认 3） |
+| 子代理递归再委派、形成森林 | `maxDepth: 0`；子代理工具过滤显式 deny 全部 `group_talk_*`，包括 `group_talk_delegate` |
+| 子代理读取群 transcript / 冒充群成员 | 子代理不是群成员；不注入 group policy；`toolFilter.deny` 覆盖群工具；群消息不包含子代理 session id |
+| 子代理跑飞、卡死 | `delegationTimeoutMs`（默认 120s）+ `AbortController`；超时写 `failed/timeout` 审计，并 `dispose()` run |
+| 结果泄露隐私 / 挤爆 transcript | 结果截断到 `maxDelegationChars`；只写 control 行；模型侧返回同样截断；原始错误只进 Host 日志 |
+| 无审计的暗箱委派 | 每次 start/complete/fail 写 `kind: "control"` 行（actor、taskId、provider、outcome、reason），人类审计视图可见 |
+| 用委派绕过群预算 | 委派另计每日配额；子代理的模型调用仍受 Host 自身计费/限制；群消息预算不变 |
+| 目标会话不在线仍假装委派 | `delegateForHuman` 要求 live organizer Agent；不在线直接 fail closed |
+
+已知残余风险：子代理仍可使用它被允许的文件/命令工具，可能在工作区产生副作用；当前没有“逐任务人工批准”对话框，只有人类显式开启 `allowAgentDelegate` + organizer 角色 + 审计。高价值群建议保持默认关闭，或只在受控组织者会话开启。
+
+测试：`test/security-2.test.mjs` 覆盖角色门禁、默认关闭、provider 缺失、`maxDepth: 0`、群工具 deny、超时/dispose、每日配额、control 行持久化、人类优先 envelope。
+
 ## 10. 结论
 
 默认配置下：

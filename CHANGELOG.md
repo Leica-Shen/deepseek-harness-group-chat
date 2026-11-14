@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.1.0
+
+- **Human priority.** Messages from the human operator are marked as user
+  instructions (not untrusted peer content) in the delivery envelope, bypass
+  target cooldown/target daily caps, and never wake a Session for an in-room
+  target. The human sees every failure and audit entry in the panel.
+- **Secretary and Organizer roles.** Secretary records audited notes and
+  rollback minutes (`group_talk_note`); Organizer can dispatch a bounded,
+  audited subagent task (`group_talk_delegate`). Roles remain advisory; the
+  host enforces who may write/delegate.
+- **Audited subagent delegation.** A subagent is spawned under a live
+  organizer/owner Agent with `maxDepth: 0`, all `group_talk_*` tools denied,
+  a timeout, per-person daily quota, result cap and `delegation start/result`
+  control rows. Disabled by default (`allowAgentDelegate: false`).
+- **Human oversight.** New audit view (control entries + failed/unknown
+  deliveries), human-only panel delegate action, and a control-entry schema
+  (`kind: "control"`) that survives persistence.
+- **UI.** Flat, expandable group list with message previews; audit and
+  delegation actions; keep-open pin that restores the room after a new message
+  auto-switches the shell; panel-level error boundary; draft/selection
+  restoration; empty-room creation; composer placeholder fix; visual cleanup.
+- **Tests.** 78 tests, including human priority, secretary notes, delegation
+  role/quota/depth/tool-filter/disposal, control persistence and client
+  rendering.
+- `README.en.md` added; SECURITY/DESIGN extended for delegation and human
+  priority.
+
 ## 2.0.3
 
 - Raise `dailyDeliveriesPerTarget` from 20 to 40. Live evidence: a committee

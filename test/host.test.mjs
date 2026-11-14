@@ -102,6 +102,7 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
     'session-a:group_talk_history',
     'session-a:group_talk_leave',
     'session-a:group_talk_list',
+    'session-a:group_talk_note',
     'session-a:group_talk_send',
   ])
   // Disabled model management is not advertised at all: no schema cost.
@@ -147,11 +148,13 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
 
 test('model tool schemas follow allowAgentCreate and allowAgentManage', () => {
   const names = (flags) => buildTools({
-    config: { allowAgentCreate: false, allowAgentManage: false, ...flags },
+    config: { allowAgentCreate: false, allowAgentManage: false, allowAgentNote: true, ...flags },
   }).map((tool) => tool.name).sort()
-  const base = ['group_talk_history', 'group_talk_leave', 'group_talk_list', 'group_talk_send']
+  const base = ['group_talk_history', 'group_talk_leave', 'group_talk_list', 'group_talk_note', 'group_talk_send']
   assert.deepEqual(names({}), base)
+  assert.deepEqual(names({ allowAgentNote: false }), base.filter((name) => name !== 'group_talk_note'))
   assert.deepEqual(names({ allowAgentCreate: true }), [...base, 'group_talk_create'].sort())
   assert.deepEqual(names({ allowAgentManage: true }), [...base, 'group_talk_manage'].sort())
-  assert.equal(names({ allowAgentCreate: true, allowAgentManage: true }).length, 6)
+  assert.deepEqual(names({ allowAgentDelegate: true }), [...base, 'group_talk_delegate'].sort())
+  assert.equal(names({ allowAgentCreate: true, allowAgentManage: true, allowAgentDelegate: true }).length, 8)
 })
