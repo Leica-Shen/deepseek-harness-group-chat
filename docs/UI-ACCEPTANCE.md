@@ -65,3 +65,32 @@ For the 2.0.3 baseline use `--dir ../评审证据/ui-2.0.3`, `--host 2.0.3`, and
 The panel version line shows client + host. For the exact `capabilities`, open DevTools → Network → the `GET /api/group-talk-l` response (2.0.3 has no `capabilities` key; 2.2 returns `{inRoom, priority, control, delegate}`). Do not hand-edit values to match a desired result; the evidence file must reflect what the page actually returned.
 
 Do not edit `groups.json` to fabricate delegation rows for a screenshot: the audit view must reflect a real organizer run, otherwise the evidence is invalid. Do not use `osascript` to resize the window or click controls; the acceptance doc must be runnable without System Events permissions.
+
+
+## Live 2.2.0 results (2026-11-15 00:15, UTC+8)
+
+Host restarted and loaded **Group-Talk-L 2.2.0** (panel version line). At 980×799:
+
+- ✅ Message rows no longer shrink to 1px under a long transcript. Root cause was
+  flexbox `flex-shrink` in the column list; `flex: none` on `.message`/`.member`
+  fixed it. Before the fix, 62 messages rendered as unreadable thin lines.
+- ✅ Long message (the 2.1 acceptance reply) shows `展开全文` / `复制全文`;
+  expanding shows the full text and `收起` / `复制全文`.
+- ✅ Page-head `审计` opens the read-only audit modal in-room; the delegation
+  section correctly says no delegations yet. (The duplicate audit button in the
+  group header was removed; the page-head one is the supported entry.)
+- ✅ Group list can be hidden completely; page head then offers `展开群列表`.
+  Member list has its own `收起参与者` control.
+- ⚠️ 125% / 150% / 130% zoom was **not** captured: `Cmd +`, `Cmd =` and
+  `Cmd + =` did not change this Harness build's page zoom; the app has no iOS-style
+  zoom menu. Do not claim those zoom states.
+- ⚠️ `复制全文` fallback (`execCommand`) was wired, but the clipboard round-trip
+  was inconclusive in this session (system clipboard contained GBK bytes and the
+  composer paste test was empty). Re-test on a focused page; treat copy-full as
+  unverified until then.
+- ✅ Evidence saved in `评审证据/ui-2.2/` with per-image
+  `<screenshot>.evidence.json` (host 2.2.0, client 2.2.0, 980×100, commit
+  af4e0d3). Zoom is recorded as 1.0 because that is what was actually captured.
+
+Screenshots: baseline, long-collapsed, long-expanded, audit modal, list-collapsed.
+The 2.2.0 host was live; `capabilities` contains priority/control/inRoom.
