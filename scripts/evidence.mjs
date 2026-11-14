@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Write one UI-acceptance evidence.json next to a screenshot.
+ * Write one UI-acceptance `<screenshot>.evidence.json` next to a screenshot.
  *
  * Usage:
  *   node scripts/evidence.mjs \
@@ -12,6 +12,8 @@
  *     --capabilities '{"inRoom":true,"priority":true,"control":true,"delegate":true}' \
  *     --notes "long message collapsed"
  *
+ * Each screenshot gets its own `<screenshot>.evidence.json`, so a matrix
+ * directory can hold all five without overwriting earlier records.
  * For 2.0.3 pass --capabilities none (the GET response has no capabilities).
  * The client version comes from package.json; the commit defaults to git HEAD.
  */
@@ -48,7 +50,7 @@ if (rawCapabilities !== 'none') {
   try { capabilities = JSON.parse(rawCapabilities) } catch { throw new Error('--capabilities must be JSON or none') }
 }
 
-const target = join(dir, 'evidence.json')
+const target = join(dir, `${basename(screenshot)}.evidence.json`)
 if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 if (!existsSync(join(dir, screenshot))) throw new Error(`screenshot not found: ${join(dir, screenshot)}`)
 
