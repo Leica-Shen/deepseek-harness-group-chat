@@ -339,3 +339,21 @@ test('priority is ambient by default and urgent is carried into the envelope', (
   assert.match(urgent, /"priority":"urgent"/)
   assert.match(urgent, /step 边界|step boundary/)
 })
+
+
+test('send purpose is required only for non-organizer agents', async () => {
+  const h = await harness({ allowAgentDelegate: true })
+  const group = await h.service.create('human', {
+    name: 'Purpose gate',
+    members: [
+      { sessionId: 'session-org', alias: 'org', role: 'Organizer' },
+      { sessionId: 'session-b', alias: 'reviewer', role: 'Reviewer' },
+    ],
+  })
+  assert.equal(h.service.sendPurposeRequired('human', group.id), false)
+  assert.equal(h.service.sendPurposeRequired('session-org', group.id), false)
+  assert.equal(h.service.sendPurposeRequired('session-b', group.id), true)
+
+  const ownerGroup = await h.service.create('session-owner', { name: 'Owner gate' })
+  assert.equal(h.service.sendPurposeRequired('session-owner', ownerGroup.id), false)
+})

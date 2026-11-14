@@ -141,6 +141,7 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
     { agent: agentB },
   )
   assert.equal(reviewed.deliveries[0].status, 'delivered')
+  assert.match(prompts.at(-1).content[0].text, /"purpose":"review"/)
 
   const dissolved = await handler({ agent: agentA, rawInput: ' dissolve' })
   assert.equal(dissolved.kind, 'success')

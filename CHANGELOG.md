@@ -38,7 +38,7 @@
 - **Priority instead of queue UI.** Messages carry `ambient` (default: finish
   the current step/turn first, do not change the plan) or `urgent` (next step
   boundary). The panel no longer offers `queue`; the advanced `mode` remains.
-- **Tests.** 87 tests, including human priority, secretary notes, delegation
+- **Tests.** 88 tests, including human priority, secretary notes, delegation
   role/quota/depth/tool-filter/disposal, control persistence, client rendering
   and the send-purpose gate.
 - `README.en.md` added; SECURITY/DESIGN extended for delegation and human
