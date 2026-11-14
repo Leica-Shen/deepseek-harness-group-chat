@@ -51,9 +51,9 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 
 ### 2.4 权限
 
-- 群主由 `ownerSessionId` 唯一确定，不接受 role 字符串冒充。
-- 群主独占管理操作；普通成员只能读/发。
-- 角色是**收件人选择器**，不是权限位。这是有意的：如果把 role 当权限，任何会话都能通过改自己的 role 提权；角色语义应该由群主分配、但只用于路由和职责说明。
+- 人类操作者以保留 id `human` 出现在成员列表里，是唯一的管理者；没有会话级 owner。
+- 参与者（已有会话）只能读/发；角色是**收件人选择器**与职责说明，不是权限位。
+- 新群 `ownerSessionId` 记为 `human`；legacy 群的旧 owner 仍可管理，人类也可以管理任何群。
 - `origin: subagent` 的委派子代理不允许入群，因为普通 Session controller 对子代理的投递路径不同；普通 fork/child 会话（有 `parentSession` 但 `origin` 不是 `subagent`）可以加入，明确拒绝委派子代理比“显示成功但无人处理”好。
 
 ### 2.5 投递与记账语义
@@ -110,7 +110,7 @@ Browser
   GroupTalkLAction (header action slot)
     └─ GroupCenter
         ├─ GroupList / GroupDetail
-        ├─ CreateForm / AddMemberModal / RoleModal / ConfirmModal
+        ├─ CreateForm / AddMemberModal / RoleModal / ConfirmModal / TargetPicker
         └─ fetch /api/group-talk-l
 
 Host
@@ -126,9 +126,9 @@ Host
 
 ### 关键不变量
 
-1. 一个群至少有一个成员，且 owner 必须是成员；
+1. 一个群至少有一个成员（人类操作者），参与者是已有会话；
 2. 群内 alias 忽略大小写唯一；同一 session 只能出现一次；
-3. 只有 owner 能改变群结构或删除群；
+3. 只有人类操作者能改变群结构或删除群；参与者只能读/发；
 4. 只有 active 群能 send；已解散群只读；
 5. 消息正文、角色、名称、别名都有长度上限与控制字符清理；
 6. 群数据只落在 `$DSH_HOME`，不写工作区；
@@ -164,6 +164,7 @@ interface Group {
   id: string
   name: string
   topic: string
+  /** `human` for new rooms; a legacy session id remains readable. */
   ownerSessionId: string
   status: 'active' | 'dissolved'
   createdAt: number
@@ -205,9 +206,9 @@ interface Delivery {
 
 ## 5. UI 风格
 
-- 入口使用 `conversation.session.header.actions` slot，与 Agent Teams 的入口同层，不新增全局导航；由于侧栏「工作区」标题没有 additive slot，额外用一个原生主题色小按钮装饰在标题右侧，点击后通过 `group-talk-l:create` 事件打开同一个建群 modal；
-- 触发器是 `Button variant="ghost" size="sm"` + `IconUsersOutlineRegular`，与现有 header 控件同高；
-- 弹层使用共享 `Modal`，两栏（群列表/详情）布局，窄屏自然压缩；
+- 主入口是 `sidebar.panellist` 的一行（`id: group-talk-l`、`order: 20`），点开后由 keyed `main` slot（`key: group-talk-l`）占满主区域，与普通对话同一层级；侧栏一行同时承载未读红点；
+- 会话页头保留一个 `conversation.session.header.actions` 快捷按钮（`Button variant="ghost" size="sm"` + `IconUsersOutlineRegular`），点击等价于侧栏入口，不再自己渲染弹层；
+- 面板内部两栏（群列表 / 对话），顶栏提供「返回对话」；高度撑满 `main`，窄屏日志自然压缩；
 - 颜色全部走 `--dsw-alias-*` / `--dsw-elevation-*` / `--dsw-radius-*`，不引入硬编码品牌色；
 - 危险操作使用 `--dsw-alias-state-error-primary`，但仅用于删除/失败；
 - zh/en 字典通过 `ctx.locale.register`，所有文案走 `t()`；

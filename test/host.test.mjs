@@ -95,6 +95,9 @@ test('Host mount registers /group, installs member tools, and uninstalls on diss
   const handler = commands[0].handler
   const created = await handler({ agent: agentA, rawInput: ' new Review' })
   assert.equal(created.kind, 'success')
+  // A human-created room starts empty; adding session-a installs its tools.
+  assert.equal(tools.size, 0)
+  await handler({ agent: agentA, rawInput: ' add @alice session-a Lead' })
   assert.deepEqual([...tools.keys()].sort(), [
     'session-a:group_talk_create',
     'session-a:group_talk_history',

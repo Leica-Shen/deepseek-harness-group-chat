@@ -59,7 +59,9 @@ function fakeReact({ initiallyOpen = false } = {}) {
     createElement,
     useState(initial) {
       const index = stateIndex++
-      return [index === 0 ? initiallyOpen : initial, () => {}]
+      // `initiallyOpen` only stands in for the header action's boolean `open`
+      // state; other components keep their real initial values.
+      return [index === 0 && initial === false ? initiallyOpen : initial, () => {}]
     },
     useEffect() {},
     useMemo(factory) { return factory() },
@@ -129,16 +131,16 @@ function detailGroup(overrides = {}) {
   }
 }
 
-test('the header panel renders its initial empty state without a store', () => {
-  const React = fakeReact({ initiallyOpen: true })
-  const Component = loadClient(React, fakePrimitives())
-  assert.equal(typeof Component, "function")
+test('the embedded panel renders its initial empty state without a store', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
   const useSessions = (selector) => selector({ ids: [], byId: {}, phase: "ready" })
-  const useSession = (selector) => selector({ subagent: null })
-  const tree = render(React.createElement(Component, {
-    sessionId: "session-a",
+  const tree = render(React.createElement(internals.GroupCenter, {
+    embedded: true,
+    open: true,
+    onClose: () => {},
+    sessionId: 'human',
     useSessions,
-    useSession,
     openSession: () => {},
     t: (key) => key,
   }), React.Fragment)
@@ -146,6 +148,25 @@ test('the header panel renders its initial empty state without a store', () => {
   assert.ok(strings.includes("emptyTitle"))
   assert.ok(strings.includes("emptyText"))
   assert.ok(strings.includes("title"))
+})
+
+test('the full-area panel renders inside its page shell', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const list = {
+    getSnapshot: () => ({ ids: [], byId: {}, phase: 'ready' }),
+    subscribe: () => () => {},
+  }
+  const tree = render(React.createElement(internals.GroupTalkLPanel, {
+    sessionList: list,
+    closePanel: () => {},
+    openSession: () => {},
+    t: (key) => key,
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.includes('panelSubtitle'))
+  assert.ok(strings.includes('backToChat'))
+  assert.ok(strings.includes('emptyTitle'))
 })
 
 test('the group detail renders members, messages, version and owner controls', () => {
@@ -201,9 +222,9 @@ test('the create screen renders its session picker and owner fields', () => {
   }), React.Fragment)
   const strings = stringsIn(tree)
   assert.ok(strings.includes('name'))
-  assert.ok(strings.includes('currentSession'))
-  assert.ok(strings.includes('selectSessions'))
+  assert.ok(strings.includes('selectParticipants'))
   assert.ok(strings.includes('createAction'))
+  assert.ok(!strings.includes('currentSession'))
 })
 
 test('waiting survives system rows, covers #role, and clears on a reply', () => {

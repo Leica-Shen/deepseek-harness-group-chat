@@ -50,7 +50,7 @@ cap and `policyRecentMessages: 0` by default.
 ## P2 — version in the panel
 
 The authenticated GET response includes the package version and the group
-detail footer renders `Group-Talk-L v1.5.0`.
+detail footer renders `Group-Talk-L v2.0.0`.
 
 ## 1.5.0 follow-up
 
@@ -60,9 +60,21 @@ cleared waiting, and a failed pending reconciliation rejected `ready()` (which
 would take the whole panel down). Unread counts were added on top: per-group
 badges, a header dot, and a transcript-derived waiting state.
 
+## 2.0.0 — panel + human operator
+
+The modal and the sidebar DOM injection were removed. The room is now a keyed
+`main` panel (same area as a conversation) with a `sidebar.panellist` entry and
+an unread dot; messages are composed as `@human` (“你”), not as the focused
+session, and new rooms have no session owner. Creation only selects
+participants, roles have presets (Designer / Judge / Researcher / Experimenter),
+and the composer target menu opens from “发送给” or by typing `@`.
+
+This is a deliberate model change, not a skin: `/group` and the panel act for
+the person; participant tools still act for their session.
+
 ## Evidence
 
-- `npm test`: **60/60**
+- `npm test`: **62/62**
 - HTTP leave regression test (POST 200, member groups empty)
 - concurrent target-burst regression
 - stale-pending reconciliation test, and one proving a failed reconcile still resolves `ready()`

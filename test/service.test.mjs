@@ -247,3 +247,41 @@ test('a failed pending reconciliation does not block service.ready', async () =>
   assert.equal(store.state.groups.grp_1.messages[0].deliveries[0].status, 'pending')
   assert.ok(logs.some((line) => line.includes('reconcile')))
 })
+
+test('the human panel creates, sends and manages ownerless groups', async () => {
+  const { service } = await harness()
+  const group = await service.create('human', {
+    name: 'Design room',
+    members: [{ sessionId: 'session-b', alias: 'bob', role: 'Designer' }],
+  })
+  assert.equal(group.ownerSessionId, 'human')
+  assert.equal(group.me.sessionId, 'human')
+  assert.equal(group.me.isOwner, true)
+  assert.equal(group.members.filter((member) => member.sessionId !== 'human').length, 1)
+
+  const sent = await service.send('human', { group: group.id, target: '@bob', message: 'please design' })
+  assert.equal(sent.deliveries[0].status, 'delivered')
+  const message = service.listFor('human')[0].messages.at(-1)
+  assert.equal(message.fromSessionId, 'human')
+  assert.equal(message.fromAlias, 'human')
+
+  // A lone participant can answer into the room: @human is a transcript
+  // target, not a session wakeup.
+  const reply = await service.send('session-b', { group: group.id, target: '*', message: 'done' })
+  assert.equal(reply.deliveries.length, 1)
+  assert.equal(reply.deliveries[0].sessionId, 'human')
+  assert.equal(reply.deliveries[0].status, 'delivered')
+  assert.equal(service.listFor('human')[0].messages.at(-1).fromSessionId, 'session-b')
+
+  await assert.rejects(
+    () => service.send('human', { group: group.id, target: '@human', message: 'loop' }),
+    /Choose another member|not sent back to its sender/,
+  )
+
+  const legacy = await service.create('session-a', { name: 'Legacy room', members: [] })
+  assert.ok(service.listFor('human').some((entry) => entry.id === legacy.id))
+  const renamed = await service.rename('human', legacy.id, 'Renamed room')
+  assert.equal(renamed.name, 'Renamed room')
+  await service.dissolve('human', legacy.id)
+  assert.equal(service.listFor('human').find((entry) => entry.id === legacy.id).status, 'dissolved')
+})

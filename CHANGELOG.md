@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0
+
+- **Full-area panel.** The group chat now registers a keyed `main` panel and a
+  `sidebar.panellist` entry: it occupies the same area as a conversation, the
+  app sidebar keeps a “群聊” marker with an unread dot, and the old modal plus
+  the sidebar DOM injection are gone.
+- **The person is the sender.** Panel and `/group` messages are composed as
+  `@human` (“你”), not as whichever session is focused. New groups have no
+  session owner: participants are sessions, the human manages the room.
+- **Creation is independent of the current conversation.** The create screen
+  only picks participants (alias + role); nothing is pre-selected.
+- **Role presets + @ picker.** Designer / Judge / Researcher / Experimenter
+  with duty text, plus a custom role. The composer target menu opens from
+  “发送给” or by typing `@`, listing participants and roles.
+- Legacy groups (session-owned) remain readable; the human can manage them.
+- 62 tests.
+
 ## 1.5.0
 
 - Unread counts: per-group badges in the list and a dot on the header action

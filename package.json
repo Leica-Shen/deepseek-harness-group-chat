@@ -1,8 +1,8 @@
 {
   "name": "@local/group-talk-l",
-  "version": "1.5.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Group-Talk-L: guarded cross-session groups for DeepSeek Harness with role assignment, @alias/#role/* routing, dedupe, fan-out caps and daily token budgets.",
+  "description": "Group-Talk-L: a full-area group chat for DeepSeek Harness where the person talks to existing sessions through role-tagged participants, with dedupe, fan-out caps, daily token budgets and no session owner.",
   "icon": "./icon.svg",
   "main": "lib/index.js",
   "exports": {

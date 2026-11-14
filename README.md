@@ -1,14 +1,17 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 60 tests · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 62 tests · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
 Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控。
 
-- Web 会话页头新增「群聊」按钮：选择已有会话建群、分配角色、查看记录、发送、解散或删除；
-- 群消息在对话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
-- **未读与等待可控**：页头红点、群列表未读数、等待超时提示与一键「催一下」；读状态只存在本机 `localStorage`，不上报 Host；
+- **像普通对话一样使用**：左侧边栏有「群聊」入口（未读红点），点开后在主区域占满整屏，不再是弹窗；
+- **你直接说话**：面板与 `/group` 发出的消息以「你」（`@human`）署名，不再借用某个会话的身份；
+- 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员，或自定义）分工；没有会话级的「群主」，房间由你管理；
+- 建群时只选参与者，不预选「当前会话」；
+- 群消息在参与者会话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
+- **未读与等待可控**：侧栏红点、群列表未读数、等待超时提示与一键「催一下」；读状态只存在本机 `localStorage`，不上报 Host；
 - 提供 `/group` 人类命令与 `group_talk_*` 模型工具；
 - 被加入群组的会话自动获得 scoped system-prompt 说明和工具，知道“我在哪个群、我是谁、怎么回复”；
 - 所有发送统一经过 **fan-out、冷却、去重、每日配额、估算 Token 预算**；
@@ -26,28 +29,29 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 
 | 需求 | 实现 |
 | --- | --- |
-| 选择已有会话创建群组 | 页头「Group-Talk-L」→「新建群组」，从当前 Host 的普通会话列表中勾选，填写别名与角色 |
+| 创建群组 | 侧栏「群聊」→「新建」：只选参与者（已有会话），填写别名与角色；不预选当前会话 |
 | 用特定指令符与指定会话对话 | `/group @别名 <消息>`；`/group #角色 <消息>`；`/group * <消息>`；模型侧用 `group_talk_send` |
-| 会话 A 与会话 B 对话 | A、B 都是成员时，A 发到 `@B` 的消息会作为普通用户消息投递进 B 的会话；B 可用同一工具回复 A |
+| 你与参与者对话 | 你发到 `@参与者` 的消息会作为普通用户消息投递进该会话；参与者用 `group_talk_send` 把回答发回群里 |
 | 被应用的会话知道怎么用 | 加入时向该 Agent scope 注册 `group-talk-l:policy` prompt section 与 6 个工具；prompt 含角色、成员、最近记录、回复方法与安全边界 |
 | 解散群组 | `/group dissolve` 或面板「解散群组」：冻结成员与记录，保留只读查看 |
 | 删除群组 | `/group delete <群> confirm` 或面板「删除群组」：永久删除群组与记录 |
-| 安排各会话角色 | 建群时逐会话填写；群主可在成员行编辑角色与职责；也可 `/group role @别名 <角色>` |
-| 成员退出 | 非群主可 `/group leave` 或在面板「退出群聊」；群主需解散/删除 |
+| 安排各会话角色 | 建群时逐参与者选择角色；之后可在参与者行编辑；预设：设计师 / 评委 / 研究员 / 实验员，也可自定义 |
+| 参与者退出 | 参与者会话可 `/group leave`；你在面板里直接移除参与者 |
 | 模型管理边界 | 默认 `allowAgentCreate/allowAgentManage=false`：模型不能静默建群/加人；人类面板和命令不受影响 |
-| 未读与等待 | 页头红点、群列表未读数（仅存本机 `localStorage`）；等待按 transcript 推导，覆盖 `@`/`#`/`*`，超时后给「催一下」与「打开对方会话」 |
-| 保持 Harness 原有风格 | 原生 header slot、`Modal`/`Button`/`Input`/`Checkbox`/`Tag`/`StateDot`/`Tooltip`、主题 token、zh/en locale、`/group` slash command、scoped tools |
+| 未读与等待 | 侧栏红点、群列表未读数（仅存本机 `localStorage`）；等待按 transcript 推导，覆盖 `@`/`#`/`*`，超时后给「催一下」与「打开对方会话」 |
+| 保持 Harness 原有风格 | 原生 `main` 面板与 `sidebar.panellist` 入口、`Button`/`Input`/`Checkbox`/`Tag`/`StateDot`/`Tooltip`、主题 token、zh/en locale、`/group` slash command、scoped tools |
 | 防信息洪水 / Token 滥用 | fan-out 上限、发送冷却、重复抑制、滑动窗口突发上限、每日 Host/发送者/群/目标四层预算、prompt 硬上限、Web/历史响应上限、群数量上限 |
 
 ## 用起来是什么感觉
 
-1. 在任意会话页头点 **群聊**，或点侧栏「工作区」右侧的小人+；
-2. 选择几个已有会话，给它们起别名（例如 `reviewer`）和角色；
-3. 在群聊面板里直接发消息，或输入 `/group @reviewer 请检查这段`；
-4. 对方在自己的会话里收到一条以 **【群聊 / Group chat】** 开头的消息；即使它正在生成，也会在下一个步骤边界收到，不会打断当前工具执行，也不会等整轮结束；
-5. 对方用 `group_talk_send` 或 `/group @owner ...` 回复，回到你的会话。
+1. 点左侧边栏的 **群聊**（或任意会话页头的「群聊」），主区域打开群聊面板；
+2. **新建**：填群名，勾选参与者，给每个人一个别名，并从「设计师 / 评委 / 研究员 / 实验员 / 自定义」里选角色；
+3. 在底部选择「发送给」目标（全部参与者 / `@某人` / `#某角色`），或直接输入 `@` 弹出选择栏；发送后消息以「你」署名；
+4. 参与者在自己的会话里收到一条以 **【群聊 / Group chat】** 开头的消息；即使它正在生成，也会在下一个步骤边界收到；
+5. 参与者用 `group_talk_send` 把回答发回群里（`target` 用 `*` 或 `@human`），面板里看到回复，等待提示消失；
+6. 顶栏「返回对话」回到普通会话；群聊入口的红点表示有未读。
 
-群聊不是新会话：每个成员仍使用自己的上下文、模型和工作区。群聊只保存成员、角色、transcript 和投递状态。
+群聊不是新会话：每个参与者仍使用自己的上下文、模型和工作区。群聊只保存参与者、角色、transcript 和投递状态。
 
 **群聊不会自动转发普通回答。** 目标会话的 assistant 回复可能包含工具输出、私有上下文或推理结果，静默回传会造成信息泄露和循环；因此回复必须由成员用 `group_talk_send` 明确发出。面板会显示“等待回复”，信封也会明确提示。
 
@@ -98,18 +102,15 @@ pnpm add link:"$PLUGIN_DIR"
 
 ## 使用
 
-### 1. Web 群组面板
+### 1. 群聊面板
 
-会话页头点击 **Group-Talk-L**，或点击侧栏「工作区」字样右侧的小人+图标，直接进入新建群组：
+点左侧边栏的 **群聊** 入口（带未读红点），或任意会话页头的「群聊」，主区域打开整屏群聊；顶栏「返回对话」回到普通会话。
 
-1. **新建群组**：填写群名/主题；当前会话自动成为群主，可修改别名与角色；勾选其他已有会话，为每个会话设置唯一别名和角色；
-2. 创建后在左侧选择群组，右侧查看成员、角色、最近消息与投递状态；
-3. 在底部选择目标并发送：
-   - `全部其他成员` → `*`
-   - `@别名` → 单个会话
-   - `#角色` → 该角色的所有其他成员
-4. 群主可以编辑角色/职责、添加/移除成员、解散或永久删除；
-5. 成员行可跳转到对应会话；面板每 8 秒刷新，页面隐藏时不轮询。面板关闭时，页头每 60 秒查一次未读，收到新消息会亮红点。
+1. **新建**：填写群名/主题，选择参与者（已有会话），为每人设置别名与角色；不预选任何会话，也不会把当前会话塞进群；
+2. 创建后在左侧切换群，右侧查看参与者、角色、最近消息与投递状态；
+3. 底部「发送给」是目标选择栏：`全部参与者` → `*`，`@别名` → 单个会话，`#角色` → 该角色的所有参与者；也可以直接输入 `@` 打开同一个选择栏；
+4. 你是房间的管理者：可编辑角色/职责、添加/移除参与者、解散或永久删除；参与者之间没有「群主」；
+5. 参与者行可跳转到对应会话；面板每 8 秒刷新，页面隐藏时不轮询。侧栏入口每 60 秒查一次未读。
 
 输入框上方会显示本群的字符上限、冷却时间、单次收件人上限，以及今日已发条数。
 
@@ -123,13 +124,13 @@ pnpm add link:"$PLUGIN_DIR"
 /group #<角色> <消息>
 /group * <消息>
 /group history [<群组>] [条数]
-/group role @<别名> <角色>          # 群主
-/group add @<别名> <会话ID> [角色]   # 群主
-/group remove @<别名>               # 群主
-/group new <群名>                   # 当前会话成为群主
-/group rename [<群组> to] <新群名>   # 群主
-/group dissolve [<群组>]            # 群主
-/group delete [<群组>] confirm       # 群主，永久删除
+/group role @<别名> <角色>          # 设置角色
+/group add @<别名> <会话ID> [角色]   # 添加参与者
+/group remove @<别名>               # 移除参与者
+/group new <群名>                   # 新建空群，之后 add 参与者
+/group rename [<群组> to] <新群名>   # 重命名
+/group dissolve [<群组>]            # 解散（只读）
+/group delete [<群组>] confirm       # 永久删除
 ```
 
 多群场景可用 `/group send <群组> <目标> <消息>`。`@` / `#` / `*` 是目标选择器，不是普通文本 mention。
@@ -141,8 +142,8 @@ pnpm add link:"$PLUGIN_DIR"
 | `group_talk_list` | 列出当前会话加入的群、自己的别名/角色、成员、最近记录 |
 | `group_talk_send` | 发群消息；`target` 为 `@别名`、`#角色` 或 `*`；受统一预算约束 |
 | `group_talk_history` | 读取近期群记录；输出有字符上限，超长正文标记 `truncated` |
-| `group_talk_manage` | 群主管理：`add_member`、`remove_member`、`set_role`、`rename`、`dissolve`、`delete` |
-| `group_talk_create` | 从已知会话 ID 创建群；人工建群优先用 Web 面板 |
+| `group_talk_manage` | 模型侧管理（默认关闭）：`add_member`、`remove_member`、`set_role`、`rename`、`dissolve`、`delete` |
+| `group_talk_create` | 从已知会话 ID 创建群（默认关闭）；人工建群用群聊面板 |
 
 被投递到目标会话的消息：
 
@@ -207,11 +208,11 @@ total     = perTarget × recipientCount
 - `interpolate: false`，群消息正文中的 `{{...}}` 不会被 system-prompt 变量插值；
 - Web 列表只返回 `uiMessageLimit` 条（默认 20）；
 - `group_talk_history` 输出受 `maxHistoryToolChars` 限制（默认 12000），并按最新优先裁剪；
-- 面板 8 秒轮询，页面隐藏时暂停；面板关闭时页头每 60 秒查一次未读（只读，不唤醒任何会话）。
+- 面板 8 秒轮询，页面隐藏时暂停；面板关闭时侧栏入口每 60 秒查一次未读（只读，不唤醒任何会话）。
 
 ### 5. 群膨胀防护
 
-- `maxGroupsPerSession`（默认 5）对每个成员生效，不只是群主；
+- `maxGroupsPerSession`（默认 5）对每个参与者会话生效；
 - `maxGroupsTotal`（默认 32）限制 Host 级记录数，包含已解散群；
 - 创建/加成员在同一个 store 事务中重新计数，避免并发穿透；
 - 每个成员最多 `maxMembersPerGroup`（16）；
@@ -219,11 +220,11 @@ total     = perTarget × recipientCount
 
 ### 6. 权限与身份
 
-- **群主**：创建者；唯一可以添加/移除成员、改角色/职责、改名、解散、删除；
-- **普通成员**：可以 `list`、`history`、`send`；
+- **你（人类操作者）**：以 `@human` 出现在房间里，可添加/移除参与者、改角色/职责、改名、解散、删除；
+- **参与者（已有会话）**：可以 `list`、`history`、`send`；没有会话级「群主」；
 - 角色只是路由与职责标签，不是权限；
 - 子代理会话不允许入群；
-- 群消息只投递给群成员，发送前重新校验。
+- `@human` 不是投递目标，群消息只投递给参与者，发送前重新校验。
 
 ## 实验与结果
 
@@ -271,7 +272,7 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `historyLimit` | `100` | 20–500 | 每群保留记录条数 |
 | `maxGroupsPerSession` | `5` | 1–50 | 每个成员最多活跃群数 |
 | `maxGroupsTotal` | `32` | 1–500 | Host 级群记录上限（含解散） |
-| `maxMembersPerGroup` | `16` | 1–64 | 每群成员上限（含群主） |
+| `maxMembersPerGroup` | `16` | 1–64 | 每群成员上限（含人类操作者 `@human`） |
 | `policyRecentMessages` | `0` | 0–10 | prompt 注入最近记录条数；默认关闭以降低注入面 |
 | `policyMaxChars` | `3500` | 800–20000 | prompt section 字符硬上限 |
 | `deliveryMode` | `steer` | steer/queue | 目标投递模式；`steer` 在运行中目标的下一个 step 插入，`queue` 等下一轮 |
@@ -336,46 +337,32 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-60 个测试覆盖：
+62 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载；
-- 目标解析、角色编辑、所有权、解散/删除；
+- 目标解析、角色编辑、人类操作者管理、解散/删除；
 - prompt/envelope 边界与 `interpolate:false`；
 - 命令解析与真实 service 驱动；
 - Host 挂载、scoped 工具安装/卸载、认证 Fetch 路由；
-- Client bundle 装载、空态/详情/创建页渲染；
-- 侧栏「工作区」右侧快捷图标注入与点击意图；
+- Client bundle 装载、`main` 面板与 `sidebar.panellist` 注册、空态/详情/创建页渲染；
+- 等待推导、未读水位与侧栏入口；
 - **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化。
 
-## 上线状态
+## 验证状态（2.0.0）
 
-本机 `desktop` profile 已安装 `@local/group-talk-l`，profile 指向本目录。2026-11-14 的真实 desktop 自检结果：
+自动化验证（源码，本机）：
 
-- Host row `group-talk-l` 为 `active`；
-- 页头 **Group-Talk-L** 按钮可见，真实鼠标点击可打开群组弹层；
-- 侧栏「工作区」右侧图标可见，真实鼠标点击可打开「新建 Group-Talk-L 群组」表单；
-- 通过认证 HTTP 路由创建群成功，6 个 `group_talk_*` 工具和 prompt section 动态安装；
-- **真实双向对话已完成**：当前会话向标题为「Harness 会话群组插件设计 对话」的会话发送 `@dialog` 消息，目标连续两轮通过 `group_talk_send` 回复，所有投递状态为 `delivered`；
-- 目标能引用当前群名和上一条消息，证明上下文不是一次性写入；
-- 目标在 owner **仍在运行**时又发来一条消息，owner 在本轮内收到，确认默认 `steer` 已生效，不再排队到回合结束；
-- 群「Harness 对话验收」保留，供后续继续；临时 JSON probe 群已删除。
+- `node --test test/*.test.mjs`：**62/62**；
+- 人类操作者建群、发送、管理、`@human` 拒绝投递、legacy 群可被人类管理，均有 service/HTTP 用例；
+- `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
+- 等待推导、未读水位、列表徽标、对账容错均有直接覆盖。
 
-自检发现并修复了十个真实问题：
+尚未验证：
 
-1. `sessionController.prompt` 必须收到 `AbortSignal`；
-2. 普通会话的 `subagent` 投影是 `null` 而不是 `undefined`，原判断让页头按钮整体返回 `null`，侧栏事件因此没有接收者；
-3. 侧栏按钮继承了上游 section header 的 `pointer-events: none`，点击与 hover 都不生效；已显式设为 `pointer-events: auto`；
-4. 默认 `queue` 让运行中会话的群回复排队到回合结束；默认改为 `steer`，在下一个 step 边界插入；
-5. `group_talk_list` 的旧输出在 recent 含 system 消息时携带 `undefined`，触发 “not lossless JSON”；
-6. 模型侧 group 摘要暴露原始 `sessionId`，已替换为 owner 别名并移除成员 session id。
-7. 目标 burst 只统计 delivered，两个并发请求可同时穿过；现在 pending 也计入目标 burst。
-8. 模型工具默认可建群/加任意成员，缺少成员退出；现在默认关闭模型建群/管理，新增 `group_talk_leave` / `/group leave` 与 UI 退出。
-9. `group_talk_list` / `group_talk_history` 可被循环调用烧 Token；增加每 Agent 每分钟读取上限。
-10. 群消息在会话里只是普通气泡；增加 `【群聊】` 人类可读信封、客户端群消息徽标和“等待回复”提示。
+- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.0.0 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
+- 2.0.0 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
 
-60 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1；1.4.2 增加催复、版本显示、pending 对账；1.5.0 增加未读计数、等待状态修正与对账容错。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
-
-剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码与测试（本地 `v1.5.0`，尚未推送）已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
+历史（1.4.x）：桌面自检曾验证页头按钮、侧栏图标、真实双向投递与 `steer`，并修复了 10 个真实问题（AbortSignal、`subagent: null`、`pointer-events`、默认 `queue`、`group_talk_list` JSON、sessionId 泄露、target burst 并发、模型建群门禁、读取限速、群消息徽标）。这些结论对 1.4.x 有效，但不再描述 2.0.0 的整屏面板。
 
 ## 已知限制与残余风险
 
@@ -385,10 +372,10 @@ node --test test/*.test.mjs
 - 群消息是 peer content，prompt 明确标注 untrusted，但无法从模型层面 100% 阻止提示注入；
 - 群状态是 Host 级共享数据，不是端到端加密；不要发送凭据；
 - 子代理会话不允许入群；
-- 未读只在本机（`localStorage`），没有跨设备同步，也没有给其他成员的已读回执；无群主转移、无实时推送；
+- 未读只在本机（`localStorage`），没有跨设备同步，也没有给其他参与者的已读回执；无实时推送；
 - 进程内串行化，多个 Host 进程同时写同一个 `dataFile` 不受跨进程锁保护；
 - 每日预算按 UTC 重置；跨时区团队需注意边界；
-- 面板 8 秒轮询、页头 60 秒未读轮询，最多约 8/60 秒显示延迟。
+- 面板 8 秒轮询、侧栏入口 60 秒未读轮询，最多约 8/60 秒显示延迟；面板与 `/group` 都是全局的，不绑定当前会话。
 
 ## 文件结构
 
@@ -405,7 +392,7 @@ group-talk-l/
     store.js             校验、原子 JSON、usage 账本、损坏恢复
     policy.js            prompt / envelope / help / history 呈现
     command.js           /group 解析与人类回执
-    client.js            Web header action + 群组面板
+    client.js            整屏群聊 panel + sidebar.panellist 入口 + 弹窗组件
   test/                  Node 原生测试
   README.md
   DESIGN.md

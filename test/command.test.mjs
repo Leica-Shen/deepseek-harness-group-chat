@@ -104,7 +104,7 @@ test('the command drives the same durable service as the panel', async () => {
   assert.match(left.text, /Left @bob/)
   const ownerLeave = await invoke(' leave')
   assert.equal(ownerLeave.kind, 'error')
-  assert.match(ownerLeave.text, /owner cannot leave|dissolve/i)
+  assert.match(ownerLeave.text, /does not belong|not a member|dissolve/i)
 
   const bad = await invoke(' delete')
   assert.equal(bad.kind, 'error')

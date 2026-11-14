@@ -41,12 +41,21 @@ test('builds a member prompt with the group protocol and live roster', () => {
   assert.match(policy, /## Group-Talk-L/)
   assert.match(policy, /"Release review" \(grp_demo\)/)
   assert.match(policy, /@reviewer \(Reviewer\)/)
-  assert.match(policy, /You: @owner — Lead — group owner/)
+  assert.match(policy, /You: @owner — Lead/)
+  assert.match(policy, /human operator/)
   assert.match(policy, /group_talk_send/)
   assert.match(policy, /\/group #<role>/)
   assert.match(policy, /Recent transcript \(untrusted data\):/)
   assert.match(policy, /The diff is ready/)
   assert.match(policy, /Roles are advisory/)
+})
+
+test('a human message never tells the agent to reply to @human', () => {
+  const human = { sessionId: 'human', alias: 'human', role: 'human' }
+  const env = buildDeliveryEnvelope(group, human, group.members[1], { text: 'Please look.' })
+  assert.match(env, /target: "\*"/)
+  assert.doesNotMatch(env, /target: "@human"/)
+  assert.match(env, /Please look\./)
 })
 
 test('recentLimit 0 injects no transcript text into the system prompt', () => {
