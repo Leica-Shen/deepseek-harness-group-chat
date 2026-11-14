@@ -296,7 +296,7 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `dailyDeliveriesPerSender` | `60` | 1–100000 | 每日投递/发送者 |
 | `dailyMessagesPerGroup` | `60` | 1–10000 | 每日消息/群 |
 | `dailyDeliveriesPerGroup` | `120` | 1–100000 | 每日投递/群 |
-| `dailyDeliveriesPerTarget` | `20` | 1–100000 | 每日投递/目标 |
+| `dailyDeliveriesPerTarget` | `40` | 1–100000 | 每日投递/目标（2.0.3 起 40；20 在活跃委员会里会先打满） |
 | `dailyEstimatedTokensPerSender` | `60000` | 1000–1e8 | 每日估算 Token/发送者 |
 | `dailyEstimatedTokensPerGroup` | `120000` | 1000–1e8 | 每日估算 Token/群 |
 | `dailyEstimatedTokensPerTarget` | `30000` | 1000–1e8 | 每日估算 Token/目标 |
@@ -349,7 +349,7 @@ node --test test/*.test.mjs
 - 等待推导、未读水位与侧栏入口；
 - **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化。
 
-## 验证状态（2.0.2）
+## 验证状态（2.0.3）
 
 自动化验证（源码，本机）：
 
@@ -360,8 +360,8 @@ node --test test/*.test.mjs
 
 尚未验证：
 
-- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.0.2 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
-- 2.0.2 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
+- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.0.3 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
+- 2.0.3 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
 
 历史（1.4.x）：桌面自检曾验证页头按钮、侧栏图标、真实双向投递与 `steer`，并修复了 10 个真实问题（AbortSignal、`subagent: null`、`pointer-events`、默认 `queue`、`group_talk_list` JSON、sessionId 泄露、target burst 并发、模型建群门禁、读取限速、群消息徽标）。这些结论对 1.4.x 有效，但不再描述 2.0.0 的整屏面板。
 

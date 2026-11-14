@@ -50,7 +50,7 @@ cap and `policyRecentMessages: 0` by default.
 ## P2 — version in the panel
 
 The authenticated GET response includes the package version and the group
-detail footer renders `Group-Talk-L v2.0.2`.
+detail footer renders `Group-Talk-L v2.0.3`.
 
 ## 1.5.0 follow-up
 

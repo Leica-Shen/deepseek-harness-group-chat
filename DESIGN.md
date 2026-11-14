@@ -91,11 +91,11 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 - **Host** 拥有全部领域逻辑、持久化、权限和投递；Client 没有写权限旁路。
 - Browser 通过同源 `/api/group-talk-l` 访问，使用 Connection 服务的认证 Fetch 路由，不新增 token 或未认证 HTTP 端口。
 - 路由使用 JSON、`no-store`、`nosniff`、请求体大小上限；错误只返回稳定的 code + 已净化的 message。
-- Client 只做选择、展示和发起操作；每次操作都带当前 `sessionId`，Host 仍重新校验成员身份/群主身份。
+- Client 只做选择、展示和发起操作；2.x 的 panel 以人类操作者 `human` 发起，participant 工具仍带 `sessionId`，Host 每次都重新校验成员身份与管理边界。
 
 ### 2.8 为什么轮询而不是 WebSocket
 
-选择 8 秒轮询，原因：
+选择「面板 8 秒 + 侧栏入口 60 秒未读」轮询，原因：
 
 - 群组变更频率低，8 秒延迟可接受，同时降低读取频率；
 - 页面隐藏时暂停轮询；

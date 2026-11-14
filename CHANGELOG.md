@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.3
+
+- Raise `dailyDeliveriesPerTarget` from 20 to 40. Live evidence: a committee
+  target hit 20 and a legitimate reply was rejected; 20 is too tight for an
+  active room.
+- Documentation cleanup: SECURITY/DESIGN references to the 1.x header button,
+  modal, DOM sidebar icon and “owner” permissions now describe the 2.x panel
+  and human operator; the 1.4.x self-check table is explicitly historical.
+- Note in the config table that `*` fan-out (6) is intentionally smaller than
+  `maxMembersPerGroup` (16): `*` is a small-room tool, not a broadcast bus.
+- 68 tests.
+
 ## 2.0.2
 
 - Human-target wording is consistent everywhere: the policy rule no longer

@@ -54,7 +54,7 @@
         dailyDeliveriesPerSender: 60
         dailyMessagesPerGroup: 60
         dailyDeliveriesPerGroup: 120
-        dailyDeliveriesPerTarget: 20
+        dailyDeliveriesPerTarget: 40
         # Conservative estimated prompt allowance; not a billing statement.
         dailyEstimatedTokensPerSender: 60000
         dailyEstimatedTokensPerGroup: 120000
