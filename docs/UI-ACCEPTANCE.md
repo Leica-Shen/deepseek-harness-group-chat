@@ -80,7 +80,9 @@ Host restarted and loaded **Group-Talk-L 2.2.0** (panel version line). At 980×7
   section correctly says no delegations yet. (The duplicate audit button in the
   group header was removed; the page-head one is the supported entry.)
 - ✅ Group list can be hidden completely; page head then offers `展开群列表`.
-  Member list has its own `收起参与者` control.
+  Member list has its own `收起参与者` control. Both choices persist in
+  localStorage across panel remounts (`group-talk-l:list-open` /
+  `group-talk-l:members-open`).
 - ⚠️ 125% / 150% / 130% zoom was **not** captured: `Cmd +`, `Cmd =` and
   `Cmd + =` did not change this Harness build's page zoom; the app has no iOS-style
   zoom menu. Do not claim those zoom states.
