@@ -127,6 +127,16 @@ test('the authenticated Fetch route serves the panel and rejects invalid writes'
   assert.equal(denied.status, 403)
   assert.equal((await denied.json()).error.code, 'owner-only')
 
+  const leave = await route.fetch(new Request('http://localhost/api/group-talk-l', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ sessionId: 'session-b', action: 'leave', group: listBody.groups[0].id }),
+  }))
+  assert.equal(leave.status, 200)
+  assert.equal((await leave.json()).group.status, 'active')
+  const afterLeave = await route.fetch(new Request('http://localhost/api/group-talk-l?sessionId=session-b', { method: 'GET' }))
+  assert.deepEqual((await afterLeave.json()).groups, [])
+
   const wrongType = await route.fetch(new Request('http://localhost/api/group-talk-l', {
     method: 'POST',
     headers: { 'content-type': 'text/plain' },

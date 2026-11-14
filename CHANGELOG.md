@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+- Fixed the authenticated Web `leave` action: it reassigned a `const` and
+  returned HTTP 500. Added an HTTP leave regression test.
+
 ## 1.4.0
 
 - Human-readable group envelopes and an in-transcript group badge.
