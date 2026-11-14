@@ -86,8 +86,9 @@ dsh plugin --profile desktop add link:"$PWD"
 ### 方式二：手工 link
 
 ```bash
+PLUGIN_DIR="$(cd /path/to/dsh-group-talk-l && pwd)"
 cd ~/.dsh/profiles/desktop
-pnpm add link:"$PWD"
+pnpm add link:"$PLUGIN_DIR"
 ```
 
 把 `@local/group-talk-l` 加入 `dsh.profile.bundles`，重启 Harness 或刷新页面。
