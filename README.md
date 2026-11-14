@@ -1,6 +1,6 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **85 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **85 tests** · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
@@ -87,8 +87,8 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 ### 方式一：DSH 插件命令
 
 ```bash
-git clone https://github.com/Leica-Shen/dsh-group-talk-l.git
-cd dsh-group-talk-l
+git clone https://github.com/Leica-Shen/deepseek-harness-group-chat.git
+cd deepseek-harness-group-chat
 dsh plugin --profile desktop add link:"$PWD"
 ```
 
@@ -118,7 +118,7 @@ dsh plugin --profile desktop add link:"$PWD"
 ### 方式二：手工 link
 
 ```bash
-PLUGIN_DIR="$(cd /path/to/dsh-group-talk-l && pwd)"
+PLUGIN_DIR="$(cd /path/to/deepseek-harness-group-chat && pwd)"
 cd ~/.dsh/profiles/desktop
 pnpm add link:"$PLUGIN_DIR"
 ```

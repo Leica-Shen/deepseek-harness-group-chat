@@ -1,6 +1,6 @@
 # Group-Talk-L · Cross-session group chat
 
-[中文](README.md) · [GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · MIT · **85 tests** · DeepSeek Harness Host + Web Client plugin
+[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **85 tests** · DeepSeek Harness Host + Web Client plugin
 
 Group-Talk-L lets the person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model, and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
@@ -31,8 +31,8 @@ Group-Talk-L lets the person talk to **existing agent sessions** as a group with
 ## Install
 
 ```bash
-git clone https://github.com/Leica-Shen/dsh-group-talk-l.git
-cd dsh-group-talk-l
+git clone https://github.com/Leica-Shen/deepseek-harness-group-chat.git
+cd deepseek-harness-group-chat
 dsh plugin --profile desktop add link:"$PWD"
 ```
 
