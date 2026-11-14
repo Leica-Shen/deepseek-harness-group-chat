@@ -21,7 +21,7 @@
   delegation actions; keep-open pin that restores the room after a new message
   auto-switches the shell; panel-level error boundary; draft/selection
   restoration; empty-room creation; composer placeholder fix; visual cleanup.
-- **Tests.** 81 tests, including human priority, secretary notes, delegation
+- **Tests.** 82 tests, including human priority, secretary notes, delegation
   role/quota/depth/tool-filter/disposal, control persistence and client
   rendering.
 - `README.en.md` added; SECURITY/DESIGN extended for delegation and human

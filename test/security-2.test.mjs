@@ -309,3 +309,25 @@ test('control audit rows survive transcript trimming', async () => {
   assert.equal(state.messages.length, 3)
   assert.equal(state.audit.length, 12)
 })
+
+
+test('delegation output is capped and human delegation fails closed without a live organizer', async () => {
+  const capped = await harness({ allowAgentDelegate: true, maxDelegationChars: 20 })
+  const group = await capped.service.create('human', {
+    name: 'Capped',
+    members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
+  })
+  capped.setResult(Promise.resolve({ output: [{ type: 'text', text: 'x'.repeat(1000) }], stopReason: 'completed' }))
+  const result = await capped.service.delegate({ id: 'session-org' }, 'session-org', group.id, { task: 'cap' })
+  assert.equal(result.output.length, 20)
+
+  const noLive = await harness({ allowAgentDelegate: true })
+  const group2 = await noLive.service.create('human', {
+    name: 'No live',
+    members: [{ sessionId: 'session-org', alias: 'org', role: 'Organizer' }],
+  })
+  await assert.rejects(
+    () => noLive.service.delegateForHuman('human', group2.id, { task: 'panel' }),
+    /not live|delegation-unavailable/i,
+  )
+})
