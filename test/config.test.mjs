@@ -19,6 +19,8 @@ test('conservative guard defaults and explicit overrides resolve', () => {
     assert.equal(defaults.allowAgentCreate, false)
     assert.equal(defaults.allowAgentManage, false)
     assert.equal(defaults.maxReadsPerAgentPerMinute, 20)
+    assert.equal(defaults.replyNudgeAfterMs, 120000)
+    assert.equal(defaults.pendingTimeoutMs, 120000)
     assert.equal(defaults.dataFile, '/tmp/group-talk-l-config-home/group-talk-l/groups.json')
     const raised = resolveConfig({ maxRecipientsPerSend: 9, maxMessageChars: 5000, sendCooldownMs: 0, deliveryMode: 'queue' })
     assert.equal(raised.maxRecipientsPerSend, 9)

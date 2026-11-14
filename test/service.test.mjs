@@ -53,7 +53,7 @@ async function harness() {
     log: () => {},
     onMembershipChanged: (sessionIds) => synced.push(sessionIds),
   })
-  return { service, store, calls, synced, dir }
+  return { service, store, calls, synced, dir, ctx }
 }
 
 test('creates a group, sends to aliases, roles and everyone else', async () => {
@@ -188,4 +188,27 @@ test('a non-owner can leave; the owner must dissolve or delete', async () => {
   assert.equal(service.listFor('session-b').length, 0)
   assert.equal(service.listFor('session-a')[0].members.length, 1)
   await assert.rejects(service.leave('session-a', group.id), /owner cannot leave/u)
+})
+
+
+test('stale pending deliveries reconcile to unknown on startup', async () => {
+  const { service, store, ctx } = await harness()
+  const group = await service.create('session-a', {
+    name: 'Pending reconciliation',
+    members: [{ sessionId: 'session-b', alias: 'bob', role: 'Reviewer' }],
+  })
+  await service.send('session-a', { group: group.id, target: '@bob', message: 'was it delivered?' })
+  await store.write((draft) => {
+    const message = draft.groups[group.id].messages.at(-1)
+    message.at = 0
+    message.deliveries[0].status = 'pending'
+  })
+  const reloaded = new GroupService({
+    store,
+    ctx,
+    config: { ...service.config, pendingTimeoutMs: 1000 },
+    log: () => {},
+  })
+  await reloaded.ready()
+  assert.equal(reloaded.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'unknown')
 })

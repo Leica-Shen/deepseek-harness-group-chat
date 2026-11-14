@@ -63,4 +63,6 @@
         # Model-facing history and Web panel bounds.
         maxHistoryToolChars: 12000
         maxReadsPerAgentPerMinute: 20
+        replyNudgeAfterMs: 120000
+        pendingTimeoutMs: 120000
         uiMessageLimit: 20

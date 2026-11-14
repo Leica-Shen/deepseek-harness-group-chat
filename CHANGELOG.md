@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2
+
+- Waiting-for-reply timeout with a one-click nudge.
+- Show the running plugin version in the group panel.
+- Reconcile stale pending deliveries to `unknown` on startup.
+- Report the policy's approximate token overhead when creating a group.
+- Correct the 0700 directory claim for the pre-restart live instance.
+
 ## 1.4.1
 
 - Fixed the authenticated Web `leave` action: it reassigned a `const` and

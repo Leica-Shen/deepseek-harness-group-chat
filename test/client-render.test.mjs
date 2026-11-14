@@ -144,7 +144,7 @@ test('the selected group detail renders members, messages and owner controls', (
   }
   const React = fakeReact({
     initiallyOpen: true,
-    stateOverrides: { 2: [group], 8: group.id, 9: 'groups' },
+    stateOverrides: { 2: [group], 9: group.id, 10: 'groups' },
   })
   const Component = loadClient(React, fakePrimitives())
   const useSessions = (selector) => selector({ ids: ['session-a', 'session-b'], byId: {}, phase: 'ready' })
@@ -165,7 +165,7 @@ test('the selected group detail renders members, messages and owner controls', (
 })
 
 test('the create screen renders its session picker and owner fields', () => {
-  const React = fakeReact({ initiallyOpen: true, stateOverrides: { 0: true, 9: 'create' } })
+  const React = fakeReact({ initiallyOpen: true, stateOverrides: { 0: true, 10: 'create' } })
   const Component = loadClient(React, fakePrimitives())
   const useSessions = (selector) => selector({
     ids: ['session-b'],
