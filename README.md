@@ -370,7 +370,7 @@ node --test test/*.test.mjs
 
 53 个自动化测试全绿。侧栏图标已在真实页面点击验证。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
 
-剩余一项运行时刷新：当前 Host 进程仍持有安装前的 `group_talk_list` tool 定义。当前群已有足够消息，列表实测可用；新建只有 system 消息的空群时，旧 tool 仍可能报 “not lossless JSON”。源码和测试已修复，下一次 Harness 重启后加载。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
+剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.0` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
 
 ## 已知限制与残余风险
 

@@ -283,12 +283,12 @@ Group-Talk-L 的每个群消息都可能：
 
 ### 剩余风险 / 待重启项
 
-- 当前 Host 进程仍持有安装前的 `group_talk_list` tool 定义。源码与测试已修复；新建只有 system 消息的空群时，旧 tool 仍可能报 “not lossless JSON”，**下一次 Harness 重启后消失**。当前「Harness 对话验收」群已有足够 recent 消息，实测列表可用；
+- 当前 Host 进程仍运行安装前的 1.3 模块；源码、测试与 GitHub `v1.4.0` 已包含 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、群聊徽标、读取限速与 `group_talk_list` JSON 修复。**下一次 Harness 重启后加载到 live**。新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”；当前群消息足够，实测列表可用；
 - `computer-use` 在热重载期间仍报 duplicate service；这是独立插件的非幂等注册问题，重启后确认；
 - 侧栏图标是 DOM 装饰，上游改版时可能安全消失；页头入口和 `/group` 命令不受影响；
 - 其余残余风险见第 6 节。
 
-当前结论：**真实双会话投递与双向对话已可用，页头和侧栏入口均已真实验证；只剩一个非核心 tool 输出修复需要下次重启刷新。**
+当前结论：**真实双会话投递与双向对话、页头和侧栏入口均已验证；源码、测试与 GitHub v1.4.0 已就绪。live Host 仍运行旧模块，重启后启用 1.4.0 的全部新防护与 UI；在那之前不能宣称 live 已完全升级。**
 ## 10. 结论
 
 默认配置下：
