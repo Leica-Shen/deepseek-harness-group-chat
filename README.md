@@ -368,9 +368,9 @@ node --test test/*.test.mjs
 9. `group_talk_list` / `group_talk_history` 可被循环调用烧 Token；增加每 Agent 每分钟读取上限。
 10. 群消息在会话里只是普通气泡；增加 `【群聊】` 人类可读信封、客户端群消息徽标和“等待回复”提示。
 
-53 个自动化测试全绿。侧栏图标已在真实页面点击验证。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
+53 个自动化测试全绿。侧栏图标已在真实页面点击验证。指定对话评委的最终复审确认：v1.4.1 没有剩余会阻断开源使用的 P0/P1。Host 信号修复、页头按钮修复、侧栏指针修复和 `steer` 实时投递均已通过真实交互验证。
 
-剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.0` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
+剩余一项运行时刷新：当前 Host 进程仍运行安装前的 1.3 模块。源码、测试与 GitHub `v1.4.1` 已包含新的 burst/Host 预算、成员退出、模型管理门禁、人类可读 envelope、会话内群聊徽标、读取限速与 `group_talk_list` JSON 修复；**下一次 Harness 重启后加载到 live**。当前群已有足够消息，旧的 `group_talk_list` 实测可用；新建只有 system 消息的空群时旧 tool 仍可能报 “not lossless JSON”。详细记录见 [SECURITY.md](SECURITY.md#9-上线自检记录)。
 
 ## 已知限制与残余风险
 
