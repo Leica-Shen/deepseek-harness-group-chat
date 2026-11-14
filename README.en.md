@@ -1,6 +1,6 @@
 # Group-Talk-L · Cross-session group chat
 
-[中文](README.md) · [GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · MIT · **78 tests** · DeepSeek Harness Host + Web Client plugin
+[中文](README.md) · [GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · MIT · **79 tests** · DeepSeek Harness Host + Web Client plugin
 
 Group-Talk-L lets the person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model, and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
@@ -10,6 +10,7 @@ Group-Talk-L lets the person talk to **existing agent sessions** as a group with
 - **Audit view.** Machine-readable `kind: "control"` rows record delegation, secretary notes and failed deliveries. The human sees the control plane directly, without asking a model to summarize it.
 - **Secretary / Organizer roles.** Secretary writes audited notes and rollback minutes (`group_talk_note`); Organizer can dispatch a bounded subagent task (`group_talk_delegate`). Roles remain advisory; the Host enforces who may write or delegate.
 - **Audited subagent delegation.** A child is started only under a live organizer/owner Agent. It gets `maxDepth: 0`, all `group_talk_*` tools are denied, it has a timeout and a daily quota, its result is capped, and its `started/completed/failed` state is written to the room as a control row. `allowAgentDelegate` is **off by default**.
+- **Queue or steer.** The panel defaults to `queue` (wait for the target's turn to end) so a group message does not routinely interrupt another session; choose `steer` only when you want the next-step insertion. `group_talk_send` accepts the same per-message `mode`; neither aborts a running tool.
 - **Panel stability.** The group list is a flat, expandable conversation list with last-message previews. "Keep open" restores the room after a new message auto-switches the shell, while an explicit click or "Back to chat" clears the pin. A panel-level error boundary prevents a render failure from dropping the person into a conversation. Drafts and the selected room are restored.
 - **Visual cleanup.** Flat list rows instead of cards, clearer role/member rows, audit/delegation actions, control rows, empty-room creation, a proper composer placeholder, and theme-token-based colors.
 
@@ -75,7 +76,7 @@ The organizer/host uses `group_talk_delegate`; the Host starts the child under t
 
 ```bash
 npm test
-# 78 tests, 0 failures
+# 79 tests, 0 failures
 ```
 
 Coverage includes persistence, corruption, routing, roles, human in-room/priority, secretary notes, delegation role/depth/tool-filter/timeout/quota/dispose, control persistence, client rendering, concurrency and budgets. See [SECURITY.md](SECURITY.md).

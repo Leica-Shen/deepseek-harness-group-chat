@@ -224,3 +224,15 @@ test('control entries survive persistence normalization', async () => {
   assert.equal(raw.groups.grp_c.messages[0].action, 'note')
   assert.equal(raw.groups.grp_c.messages[0].outcome, 'recorded')
 })
+
+test('per-message delivery mode overrides the deployment default', async () => {
+  const { service, promptCalls } = await harness({ deliveryMode: 'queue' })
+  const group = await service.create('human', {
+    name: 'Mode',
+    members: [{ sessionId: 'session-b', alias: 'bob', role: 'Designer' }],
+  })
+  await service.send('human', { group: group.id, target: '@bob', message: 'steer me', mode: 'steer' })
+  await service.send('human', { group: group.id, target: '@bob', message: 'queue me', mode: 'queue' })
+  assert.equal(promptCalls[0].mode, 'steer')
+  assert.equal(promptCalls[1].mode, 'queue')
+})

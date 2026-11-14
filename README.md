@@ -1,6 +1,6 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **78 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **79 tests** · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
@@ -12,6 +12,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 - **审计视图**：`kind: "control"` 的委派、秘书记录、失败投递集中展示；人类可以看到一切，不依赖模型转述。
 - **秘书 / 组织者**：秘书写审计日志与回退记录（`group_talk_note`）；组织者做任务调度与子代理委派（`group_talk_delegate`）。角色仍是职责标签，不是权限位。
 - **有界子代理委派**：仅在 live organizer/owner Agent 下启动；`maxDepth: 0`、禁用全部 `group_talk_*` 工具、超时、每日配额、结果截断、`delegation started/completed/failed` 审计；默认关闭 `allowAgentDelegate`。
+- **不打断的发送方式**：面板默认「排队（不打断）」，等目标本轮结束再投；需要插话时选「插话（step 边界）」。模型侧 `group_talk_send` 也接受 `mode`，不中止正在运行的工具。
 - **群聊面板稳定性**：群列表改为可展开的对话列表（含最后一条预览），「保持打开」在消息触发自动切换后把人类拉回房间；面板级错误边界不再把用户丢回普通对话；草稿与选中群在切换后恢复；可创建空房间。
 - **视觉**：扁平列表、角色/参与者行、审计与委派操作、消息/控制行、窄屏与暗色 token 收敛；去掉旧卡片感与重复描边。
 
@@ -361,7 +362,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-78 个测试覆盖：
+79 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -377,7 +378,7 @@ node --test test/*.test.mjs
 
 自动化验证（源码，本机）：
 
-- `node --test test/*.test.mjs`：**78/78**；
+- `node --test test/*.test.mjs`：**79/79**；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
