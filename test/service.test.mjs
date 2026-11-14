@@ -270,7 +270,7 @@ test('the human panel creates, sends and manages ownerless groups', async () => 
   const reply = await service.send('session-b', { group: group.id, target: '*', message: 'done' })
   assert.equal(reply.deliveries.length, 1)
   assert.equal(reply.deliveries[0].sessionId, 'human')
-  assert.equal(reply.deliveries[0].status, 'delivered')
+  assert.equal(reply.deliveries[0].status, 'in-room')
   assert.equal(service.listFor('human')[0].messages.at(-1).fromSessionId, 'session-b')
 
   await assert.rejects(
@@ -284,4 +284,37 @@ test('the human panel creates, sends and manages ownerless groups', async () => 
   assert.equal(renamed.name, 'Renamed room')
   await service.dissolve('human', legacy.id)
   assert.equal(service.listFor('human').find((entry) => entry.id === legacy.id).status, 'dissolved')
+})
+
+test('in-room replies wake no session and charge no delivery or token budget', async () => {
+  const { service, calls } = await harness()
+  const group = await service.create('human', {
+    name: 'Room only',
+    members: [{ sessionId: 'session-b', alias: 'B', role: 'Designer' }],
+  })
+  const sent = await service.send('session-b', { group: group.id, target: '@human', message: 'note for the person' })
+  assert.equal(sent.deliveries[0].status, 'in-room')
+  assert.equal(calls.length, 0)
+  const usage = service.usageFor('session-b').sender
+  assert.equal(usage.messages, 1)
+  assert.equal(usage.deliveries, 0)
+  assert.equal(usage.tokens, 0)
+})
+
+test('a legacy human alias still resolves @human and its own alias', async () => {
+  const { service, store } = await harness()
+  const group = await service.create('human', {
+    name: 'Mixed aliases',
+    members: [{ sessionId: 'session-b', alias: 'B', role: 'Designer' }],
+  })
+  await store.write((draft) => {
+    const human = draft.groups[group.id].members.find((member) => member.sessionId === 'human')
+    human.alias = 'owner'
+    human.role = 'owner'
+    draft.groups[group.id].ownerSessionId = 'human'
+  })
+  const viaOwner = await service.send('session-b', { group: group.id, target: '@owner', message: 'hello owner' })
+  assert.equal(viaOwner.deliveries[0].status, 'in-room')
+  const viaHuman = await service.send('session-b', { group: group.id, target: '@human', message: 'hello human alias' })
+  assert.equal(viaHuman.deliveries[0].status, 'in-room')
 })

@@ -1,6 +1,6 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：2.0.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。
+> 版本：2.0.1 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本。
 >
 > 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
@@ -209,7 +209,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 62 个测试：
+当前 65 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -227,7 +227,7 @@ Group-Talk-L 的每个群消息都可能：
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：62/62 通过；
+- [x] `node --test test/*.test.mjs`：65/65 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -270,7 +270,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **62 个测试全绿**。
+新增测试后 **65 个测试全绿**。
 
 ### 真实对话验收
 

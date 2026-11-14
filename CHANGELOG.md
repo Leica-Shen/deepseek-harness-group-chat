@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.1
+
+- In-room delivery: messages addressed to the human operator now use the
+  `in-room` status instead of a fake session `delivered`. The panel shows
+  “群面板可见”, and model tools see `room: "panel"` instead of a session wakeup.
+- In-room deliveries are excluded from target wakeups, target burst and token
+  budgets; the message still counts against the sender/group message caps.
+- Waiting-for-reply ignores human-only targets: an in-room note never becomes
+  “waiting for @owner”.
+- `@human` resolves to the stored human member even when a pre-2.0 room kept
+  the legacy alias (e.g. `@owner`); the legacy alias itself keeps working.
+- The panel warns when the Host is still pre-2.0 and reports a human-target
+  send as “recorded in the room” rather than a lost delivery.
+- 65 tests.
+
 ## 2.0.0
 
 - **Full-area panel.** The group chat now registers a keyed `main` panel and a

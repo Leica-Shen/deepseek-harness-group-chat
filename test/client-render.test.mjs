@@ -261,6 +261,26 @@ test('waiting survives system rows, covers #role, and clears on a reply', () => 
   assert.equal(internals.deriveWaiting(alias, 'a').nudgeable, true)
 })
 
+test('waiting ignores an in-room message to the human operator', () => {
+  const { internals } = loadClientModule(fakeReact(), fakePrimitives())
+  const group = {
+    status: 'active',
+    members: [
+      { sessionId: 'human', alias: 'owner', role: 'owner' },
+      { sessionId: 'b', alias: 'B', role: 'Designer' },
+    ],
+    messages: [{
+      id: 'm1',
+      kind: 'message',
+      at: 10,
+      fromSessionId: 'b',
+      target: '@owner',
+      deliveries: [{ sessionId: 'human', alias: 'owner', status: 'in-room' }],
+    }],
+  }
+  assert.equal(internals.deriveWaiting(group, 'b'), null)
+})
+
 test('unread counts only other members after the watermark, ignoring system rows', () => {
   const { internals } = loadClientModule(fakeReact(), fakePrimitives())
   const group = {

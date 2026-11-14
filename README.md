@@ -1,6 +1,6 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 62 tests · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [MIT License](LICENSE) · 65 tests · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
@@ -11,6 +11,7 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 - 参与者是已有会话，按角色（设计师 / 评委 / 研究员 / 实验员，或自定义）分工；没有会话级的「群主」，房间由你管理；
 - 建群时只选参与者，不预选「当前会话」；
 - 群消息在参与者会话里以「【群聊 / Group chat】群名」开头，和普通消息一眼区分；
+- 人类操作者的消息是 in-room：写入群记录、面板可见，但不唤醒任何会话，也不计入投递/Token 预算；
 - **未读与等待可控**：侧栏红点、群列表未读数、等待超时提示与一键「催一下」；读状态只存在本机 `localStorage`，不上报 Host；
 - 提供 `/group` 人类命令与 `group_talk_*` 模型工具；
 - 被加入群组的会话自动获得 scoped system-prompt 说明和工具，知道“我在哪个群、我是谁、怎么回复”；
@@ -337,7 +338,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-62 个测试覆盖：
+65 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -348,19 +349,19 @@ node --test test/*.test.mjs
 - 等待推导、未读水位与侧栏入口；
 - **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化。
 
-## 验证状态（2.0.0）
+## 验证状态（2.0.1）
 
 自动化验证（源码，本机）：
 
-- `node --test test/*.test.mjs`：**62/62**；
+- `node --test test/*.test.mjs`：**65/65**；
 - 人类操作者建群、发送、管理、`@human` 拒绝投递、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖。
 
 尚未验证：
 
-- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.0.0 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
-- 2.0.0 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
+- 当前 Host 仍在运行安装时的旧模块，**重启 Harness 后**才会加载 2.x 的 Host 与 Client；整屏面板需要在真实页面上再点一次（会话内无法点击 GUI）；
+- 2.0.1 的面板是新的 `main` keyed slot + `sidebar.panellist`，不依赖宿主 DOM 类名；旧的侧栏「工作区」右侧图标注入已删除。
 
 历史（1.4.x）：桌面自检曾验证页头按钮、侧栏图标、真实双向投递与 `steer`，并修复了 10 个真实问题（AbortSignal、`subagent: null`、`pointer-events`、默认 `queue`、`group_talk_list` JSON、sessionId 泄露、target burst 并发、模型建群门禁、读取限速、群消息徽标）。这些结论对 1.4.x 有效，但不再描述 2.0.0 的整屏面板。
 
