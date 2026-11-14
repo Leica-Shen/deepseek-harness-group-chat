@@ -452,3 +452,52 @@ test('the group list shows a flat preview and a collapse control', () => {
   assert.ok(strings.some((value) => value.includes('Latest preview text')))
   assert.ok(strings.includes('collapseGroups') || strings.includes('▾'))
 })
+
+
+test('long messages expose expand/copy controls and priority is visible', () => {
+  const React = fakeReact()
+  const { internals } = loadClientModule(React, fakePrimitives())
+  const group = detailGroup({
+    messages: [{
+      id: 'msg_long',
+      kind: 'message',
+      at: 10,
+      fromAlias: 'bob',
+      fromSessionId: 'session-b',
+      target: '@human',
+      priority: 'urgent',
+      text: 'x'.repeat(800),
+      deliveries: [{ sessionId: 'human', alias: 'human', status: 'in-room' }],
+    }],
+    messageTotal: 1,
+  })
+  const tree = render(React.createElement(internals.GroupDetail, {
+    group,
+    sessionId: 'session-a',
+    busy: '',
+    notice: null,
+    error: null,
+    limits: { replyNudgeAfterMs: 120000, allowAgentDelegate: false },
+    usage: null,
+    onSend: () => {},
+    onEditRole: () => {},
+    onRemoveMember: () => {},
+    onOpen: () => {},
+    onDissolve: () => {},
+    onDelete: () => {},
+    onAddMember: () => {},
+    onLeave: () => {},
+    onNudge: () => {},
+    onAudit: () => {},
+    onTogglePin: () => {},
+    pinned: false,
+    prioritySupported: true,
+    version: '2.1.0',
+    t: (key) => key,
+    useSessions: (selector) => selector({ byId: {} }),
+  }), React.Fragment)
+  const strings = stringsIn(tree)
+  assert.ok(strings.some((value) => value.includes('priorityUrgentShort')))
+  assert.ok(strings.includes('expandMessage'))
+  assert.ok(strings.includes('copyFull'))
+})

@@ -1,6 +1,6 @@
 # Group-Talk-L · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **82 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/dsh-group-talk-l) · [English](README.en.md) · [MIT License](LICENSE) · **83 tests** · DeepSeek Harness Host + Web Client plugin
 
 让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
 
@@ -362,7 +362,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-82 个测试覆盖：
+83 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -378,7 +378,7 @@ node --test test/*.test.mjs
 
 自动化验证（源码，本机）：
 
-- `node --test test/*.test.mjs`：**82/82**；
+- `node --test test/*.test.mjs`：**83/83**；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
