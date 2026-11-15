@@ -1,5 +1,7 @@
-# Group-Talk-L UI acceptance matrix (2.2)
+# Group-Talk-L UI acceptance matrix (2.2 / 2.3)
 
+> **2.3.0 delta (2026-11-15):** `ambient` now uses `queue` and `urgent` uses `steer`; the audit modal fetches its rows on demand; an over-cap “all participants” target is disabled; the member count includes the human operator; `group_talk_list` lines are capped at 240 characters. Re-run this matrix against a restarted 2.3.0 Host before quoting the 2.2 screenshots as current.
+>
 Use this after restarting Harness so the **2.2 Host** (capabilities present) is live. Until then the Host is 2.0.3: priority is capability-disabled and real delegation cannot run.
 
 ## Scope clarification

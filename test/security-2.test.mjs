@@ -71,7 +71,7 @@ async function harness(overrides = {}) {
 }
 
 test('human messages bypass target cooldown and target daily caps', async () => {
-  const { service, promptCalls } = await harness({ sendCooldownMs: 600000, dailyDeliveriesPerTarget: 1 })
+  const { service, store, promptCalls } = await harness({ sendCooldownMs: 0, dailyDeliveriesPerTarget: 1 })
   const group = await service.create('human', {
     name: 'Human priority',
     members: [{ sessionId: 'session-b', alias: 'bob', role: 'Designer' }],
@@ -79,6 +79,9 @@ test('human messages bypass target cooldown and target daily caps', async () => 
   await service.send('human', { group: group.id, target: '@bob', message: 'first' })
   await service.send('human', { group: group.id, target: '@bob', message: 'second' })
   assert.equal(promptCalls.length, 2)
+  // Human priority skips the target check but must not consume the target's
+  // daily budget for peers.
+  assert.equal(store.state.usage.targets['session-b']?.deliveries ?? 0, 0)
 
   const agentGroup = await service.create('session-a', {
     name: 'Agent cap',
@@ -87,7 +90,7 @@ test('human messages bypass target cooldown and target daily caps', async () => 
   await service.send('session-a', { group: agentGroup.id, target: '@carol', message: 'one' })
   await assert.rejects(
     () => service.send('session-a', { group: agentGroup.id, target: '@carol', message: 'two' }),
-    /cooldown|rate-limited/i,
+    /Daily delivery budget|quota-exceeded/i,
   )
 })
 
@@ -107,8 +110,9 @@ test('secretary notes are audited control entries and role-gated', async () => {
   assert.equal(control.action, 'note')
   assert.equal(control.outcome, 'recorded')
   assert.match(control.text, /Decision/)
-  assert.ok(Array.isArray(view.audit))
-  assert.ok(view.audit.some((entry) => entry.action === 'note'))
+  const audit = service.auditFor('human', group.id)
+  assert.ok(Array.isArray(audit.audit))
+  assert.ok(audit.audit.some((entry) => entry.action === 'note'))
   await assert.rejects(
     () => service.note('session-b', group.id, 'not allowed'),
     /secretary|organizer|role-required/i,
@@ -305,9 +309,25 @@ test('control audit rows survive transcript trimming', async () => {
       }, 3)
     })
   }
-  const state = store.state.groups.grp_trim
-  assert.equal(state.messages.length, 3)
+  let state = store.state.groups.grp_trim
+  // Control rows keep their own small transcript window; they never evict chat
+  // rows and the full history stays in audit.
+  assert.equal(state.messages.filter((message) => message.kind === 'control').length, 12)
   assert.equal(state.audit.length, 12)
+  for (let index = 12; index < 42; index += 1) {
+    await store.write((draft) => {
+      appendControl(draft.groups.grp_trim, 'sec', {
+        fromSessionId: 'session-secretary',
+        action: 'note',
+        outcome: 'recorded',
+        taskId: `task_${index}`,
+        text: `note ${index}`,
+      }, 3)
+    })
+  }
+  state = store.state.groups.grp_trim
+  assert.equal(state.messages.filter((message) => message.kind === 'control').length, 20)
+  assert.equal(state.audit.length, 42)
 })
 
 
@@ -334,7 +354,7 @@ test('priority is ambient by default and urgent is carried into the envelope', (
   }
   const ambient = buildDeliveryEnvelope(group, group.members[0], group.members[1], { text: 'later' })
   assert.match(ambient, /"priority":"ambient"/)
-  assert.match(ambient, /不要打断|do not interrupt/)
+  assert.match(ambient, /不要改变当前计划|do not change the current plan/)
   const urgent = buildDeliveryEnvelope(group, group.members[0], group.members[1], { text: 'now', priority: 'urgent' })
   assert.match(urgent, /"priority":"urgent"/)
   assert.match(urgent, /step 边界|step boundary/)

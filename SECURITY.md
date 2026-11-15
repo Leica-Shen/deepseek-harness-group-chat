@@ -1,8 +1,8 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：2.2.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板、持久化账本、人类优先、秘书/组织者、子代理委派、发送门槛。
+> 版本：2.3.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板与人类身份、持久化账本与 lossy 载入、人类优先、笔记/审计、子代理委派、发送门槛、ambient/urgent 投递。
 >
-> 结论：在默认配置下，已消除“单次广播无限制唤醒全体成员”“重复调用无限重复投递”“prompt 随群数无限增长”“Web 无限拉取 transcript”等高危路径；残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
+> 结论：2.3.0 关闭了 2.2 评审中的 P1：Web 不再信任 body 里的 `sessionId`、purpose 门槛下沉到域服务、人类消息不再消耗 target 日账本、`ambient` 真正使用 `queue`、lossy store 拒绝写入。残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入**、**已安装插件/同源脚本的信任域** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
 ## 1. 调查目标
 
@@ -94,7 +94,7 @@ Group-Talk-L 的每个群消息都可能：
 | 发送者投递数 | 60 | 长 fan-out 会先耗尽此额度 |
 | 群消息数 | 60 | 单群整体活跃度 |
 | 群投递数 | 120 | 单群总唤醒次数 |
-| 目标投递数 | 20 | 上限设为 2 时，第 3 次广播被拒绝，目标只收到 2 次 |
+| 目标投递数 | 40 | 上限设为 2 时，第 3 次广播被拒绝，目标只收到 2 次 |
 | 估算 Token/发送者 | 60,000 | 发送者总预算 |
 | 估算 Token/群 | 120,000 | 实验上限 2,500、每次投递 1,000：一次 2 目标消息约 2,100，第二次被拒绝 |
 | 估算 Token/目标 | 30,000 | 防止单个目标被多群围猎 |
@@ -115,7 +115,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ### 4.6 UI / history 输出
 
-- Web 列表：`uiMessageLimit = 20`，每群最多返回 20 条；
+- Web 列表：`uiMessageLimit = 20`，每群最多返回 20 条消息；审计行默认不随列表返回，按需请求；
 - 工具历史：`maxHistoryToolChars = 12000`，按最新优先裁剪，超长正文标记 `truncated`；
 - 2000 字正文的 JSON envelope 约 2,487 字符；正文受 `maxMessageChars = 2000` 限制；
 - Web 面板轮询 8 秒一次，`document.hidden` 时暂停；面板关闭时页头另有一次 60 秒的未读轮询（只读 GET，不产生模型 turn）。
@@ -148,7 +148,27 @@ Group-Talk-L 的每个群消息都可能：
 - 持久化时强制数据文件 `0600`、数据目录 `0700`；旧 live 进程未重启前，目录可能仍是旧的 `0755`，下一次写入/重启后生效；
 - 模型侧 `summarize` 不再返回原始 `sessionId`，只返回别名/角色；Owner 用别名表示；
 - envelope 不含 session id、凭据、系统提示；peer 文本保留为 JSON 字符串（不执行、不插值）；
-- Web 路由仍是同一 operator 认证边界，不新增未认证端口；请求体 ≤256 KiB，错误只返回稳定 code + 净化 message。
+- Web 路由只代表人类操作者：`sessionId` 只接受 `human`，非 `human` 返回 `human-only`；跨站 `Origin`/`Sec-Fetch-Site` 返回 403；请求体 ≤256 KiB，错误只返回稳定 code + 净化 message。
+
+### 4.10 2.3.0 的边界修复
+
+| 问题 | 2.2 行为 | 2.3 控制 |
+| --- | --- | --- |
+| Web 身份混淆代理 | `POST/GET` 的 `sessionId` 被当作调用者 | 只接受 `human`；非 `human` 返回 `human-only`；官方面板本来只传 `human` |
+| 跨站调用 | 只依赖传输层认证 | 额外检查 `Origin` 与 `Sec-Fetch-Site`；跨站返回 403 |
+| purpose 只在工具层 | HTTP/新入口可绕过 | 域服务在解析目标后强制；in-room `@human` 回复豁免；角色精确匹配 |
+| 人类消息吃掉 target 账本 | 绕过上限但仍增加 target 计数 | 人类消息不检查也不记 target 账本；sender 冷却对所有人生效 |
+| `ambient` 只是文案 | 与 urgent 同为 `steer` | `ambient → queue`，`urgent → steer`；显式 `mode` 覆盖 |
+| 笔记无限写 | 可挤掉聊天、放大轮询 | 10/分、50/天；control 独立 20 行窗口；完整历史在 `audit`；成员/角色/改名/解散也写审计事实；审计按需拉取 |
+| Token 估算对中文偏低 | 固定 `chars/4` | CJK × 1.5，其他 ÷ 4；明确“不是账单” |
+| lossy 载入静默丢数据 | 继续用残缺 state，下次写覆盖 | 标为只读；HTTP 503；保留原文件 |
+| 重复挂载 | 两个 store 互相覆盖 | 同一 `dataFile` 只允许一个实例 |
+
+### 4.11 2.3.0 的残余信任边界
+
+- Web 路由的认证主体是“操作者的浏览器”，不是“某个会话”；因此同源脚本仍能以人类身份发消息。这不是插件能单独解决的沙箱问题，市场文案与 SECURITY 应明确“已安装插件/同源脚本同属信任域”。
+- 群元数据（名称、角色、职责、主题）仍会进入成员的 system prompt；`interpolate: false` 只阻止 `{{}}` 插值，不阻止语义注入。默认 `allowAgentCreate/Manage=false` 时只有人类能设置这些字段。
+- 子代理委派的真实 provider 路径尚未在 2.3 中实跑；默认关闭，市场描述应标实验性。
 
 ## 5. 防护映射
 
@@ -166,11 +186,16 @@ Group-Talk-L 的每个群消息都可能：
 | 群记录无限增长 | `maxGroupsTotal`、`historyLimit` | 创建失败/最旧记录裁掉 |
 | system-prompt 变量注入 | `interpolate: false` | 群正文不参与插值 |
 | 群消息冒充 Host/用户 | envelope + policy 明确 untrusted；不自动执行工具 | 模型层面仍需遵循安全策略 |
+| 同源脚本冒充任意会话 | 2.3：Web 路由只接受 `human` + Origin 检查 | 403；人类身份仍可被同源脚本代表（见 4.11） |
+| 非 organizer 绕过 purpose | 2.3：service 级门禁 + 精确角色 | `purpose-required`，0 投递 |
+| 笔记刷屏/审计膨胀 | 10/分、50/天；control 独立窗口；audit 按需 | `rate-limited`/`quota-exceeded`；GET 不含 audit |
+| lossy store 覆盖原文件 | 载入即只读；HTTP 503 | 人工修复/移走文件 |
+| 中文 Token 低估 | CJK-aware 估算 | 预算更早触发；仍不是账单 |
 
 ## 6. 残余风险
 
 1. **估算不等于账单**  
-   目标会话可能带着很长的历史上下文；固定 `assumedTokensPerDelivery` 无法精确覆盖。默认预算因此偏保守。真实成本监控仍应在 Harness/模型层进行。
+   2.3 改为 CJK-aware（CJK × 1.5）并保留 `assumedTokensPerDelivery`，但仍不计目标会话的上下文重读。一个长上下文目标被唤醒 40 次的真实成本可能远高于估算；预算只是限流器，真实成本监控仍应在 Harness/模型层进行。
 
 2. **提示注入**  
    envelope 和 prompt 已明确群消息是 untrusted peer content，但模型仍可能被复杂文本影响。插件不做内容审核，也不会自动执行群消息中的工具调用；目标模型仍以正常 agent 规则运行。
@@ -184,16 +209,25 @@ Group-Talk-L 的每个群消息都可能：
 5. **跨时区**  
    每日账本按 UTC 重置。对 UTC+8 用户，重置发生在本地 08:00；这是为了确定性和跨进程一致。
 
-6. **群内文本没有内容审核**  
+6. **插件信任域**
+   已安装的 Host 插件可以用 Node 文件 API 直接读写 `groups.json`；同源 Client 脚本可以调用 Web 路由。0600、`allowAgentManage` 和 purpose 门槛防的是协议内越权，不是恶意插件沙箱。市场安装第三方插件时，这应是明示前提。
+
+7. **插件信任域与 lossy store**
+   载入时丢失成员/群会让 store 只读并返回 503；这是防止覆盖的保护，但也意味着需要人工修复文件后才能继续写入。不要把 `groups.json` 交给会改写 schema 的外部工具。
+
+8. **委派尚未真实 provider 验收**
+   2.3 只在 fake provider 上验证了角色、深度、工具过滤、超时、配额和 `dispose`；默认 `allowAgentDelegate: false`，市场描述不应把它当作稳定能力。
+
+9. **群内文本没有内容审核**
    群成员是同一操作者可见的会话；插件不提供跨用户隔离，也不做敏感信息扫描。不要在群消息中发送凭据。
 
-7. **模型自动回复**  
+10. **模型自动回复**
    普通 assistant 回答不会自动中继，必须显式调用 `group_talk_send`。这是有意设计：自动转发 assistant 内容可能泄露工具输出、私有上下文或推理结果，并形成循环；面板会显示「等待回复」。
 
-8. **UI 轮询**  
-   面板 8 秒、侧栏入口未读 60 秒，都不是实时；牺牲时效换取更低的读取频率。未读水位只存本机，不上报 Host。
+11. **UI 轮询**
+   面板 8 秒、侧栏入口未读 60 秒，都不是实时；牺牲时效换取更低的读取频率。未读水位只存本机，不上报 Host。审计行在打开审计视图时按需拉取，不进入轮询。
 
-9. **in-transcript 徽标是 DOM 装饰。** 群聊入口本身走原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；但会话内「群聊」徽标仍按 `userRow` / `userStack` 类名装饰，上游改版时会安全消失（不会报错），核心入口与 `/group` 命令不受影响。
+12. **in-transcript 徽标是 DOM 装饰。** 群聊入口本身走原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；但会话内「群聊」徽标仍按 `userRow` / `userStack` 类名装饰，上游改版时会安全消失（不会报错），核心入口与 `/group` 命令不受影响。
 
 ## 7. 运维建议
 
@@ -208,7 +242,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 88 个测试：
+当前 101 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -223,12 +257,13 @@ Group-Talk-L 的每个群消息都可能：
 | `protection.test.mjs` | 基线放大、fan-out、冷却、去重、sender/target/group/token 预算、群膨胀、prompt/历史/UI 上限、账本持久化 |
 | `security.test.mjs` | 目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、0600/0700 |
 | `security-2.test.mjs` | 人类优先、秘书/安全主管角色、委派角色/深度/工具过滤/配额/`dispose`、control 持久化、priority |
-| `host.test.mjs` | 非 organizer 的 `group_talk_send` 无 `purpose` 被拒绝；organizer/owner 豁免 |
-| `config.test.mjs` | 默认值、steer、burst/host 限值与非法值回退 |
+| `release-2.3.test.mjs` | queue/steer、service 级 purpose、精确角色、target 账本、CJK 估算、笔记配额、audit 按需、list 上限、lossy store、8,000 字上限 |
+| `host.test.mjs` | Host 挂载、scoped 安装/卸载、sent-gate 豁免、重复挂载忽略 |
+| `config.test.mjs` | 默认值、queue/steer、burst/host 限值与非法值回退 |
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：88/88 通过；
+- [x] `node --test test/*.test.mjs`：101/101 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -265,7 +300,7 @@ Group-Talk-L 的每个群消息都可能：
 1. **投递缺少 AbortSignal**：`ctx.sessionController.prompt` 的 Host 包装层要求第二个参数是 `AbortSignal`。修复为 `prompt(request, AbortSignal.timeout(30000))`。
 2. **页头按钮被隐藏**：普通会话的 `subagent` 投影是 `null`，原判断 `!== undefined` 把它当成子会话，组件返回 `null`，侧栏事件没有接收者。修复为 `Boolean(snapshot?.subagent)`，并让侧栏图标优先点击一个隐藏的 direct opener。
 3. **侧栏按钮不可点击**：上游 section header 存在 `pointer-events: none` 继承，注入按钮的 click/hover 都不触发。显式添加 `pointer-events: auto; position: relative; z-index: 1` 后，真实鼠标点击可打开表单。
-4. **回复排队到回合结束**：默认投递模式是 `queue`，运行中的目标只能在本轮结束后看到群消息。改为默认 `steer`，在下一个 step 边界送达；并以 `priority: ambient/urgent` 提示目标是否改变当前计划。`queue` 仅保留为高级配置，面板不再推荐。
+4. **回复排队到回合结束**：1.x 默认投递模式是 `queue`，运行中的目标只能在本轮结束后看到群消息。2.1 改为默认 `steer` 以获得更快的边界投递；2.3 把 `ambient` 重新落回 `queue`、`urgent` 使用 `steer`，同时保留显式 `mode` 覆盖。
 5. **tool 输出含 undefined**：旧 `summarize` 给 system 消息写了 `from: undefined` / `target: undefined`，Harness 的 lossless-JSON 输出校验拒绝。已按字段存在性构造 JSON，并增加递归 no-undefined 测试。
 6. **模型管理权限过宽**：默认 `allowAgentCreate/allowAgentManage=false`，模型工具不能静默建群/加人；人类面板和 `/group` 命令仍可。新增 `group_talk_leave`、`/group leave` 和 UI「退出群聊」。
 7. **target burst 竞态**：并发请求在 pending 阶段看不到已占用的 target 配额；现在 pending 也计入，并增加跨群并发回归。
@@ -273,7 +308,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **88 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化）。
+新增测试后 **101 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化，以及 2.3 的 HTTP human-only、purpose 域门禁、queue/steer、target 账本、CJK 估算、笔记配额、audit 按需、lossy store、重复挂载）。
 
 ### 真实对话验收
 
@@ -291,7 +326,7 @@ Group-Talk-L 的每个群消息都可能：
 - 群聊入口是原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；仅会话内徽标仍是 DOM 装饰，上游改版时可能安全消失；
 - 其余残余风险见第 6 节。
 
-当前结论：**2.2.0 的整屏 panel、群列表/参与者折叠、长消息展开与审计 modal 已在本机 live Host 2.2.0 验证；发送门槛/人类优先/委派安全有 88 个测试覆盖；真实子代理 provider 仍需由 organizer 实跑一次。**
+当前结论：**2.3.0 的 HTTP human-only、purpose 域门禁、queue/steer、笔记配额、lossy store 读保护与重复挂载均有自动化测试；2.2.0 的整屏 panel、折叠、长消息和审计 modal 仍是最近一次实机 UI 证据。源码 2.3.0 需要重启 Harness 才会成为 live Host；真实子代理 provider 仍需由 organizer 实跑一次。**
 ## 9.5 子代理委派安全（2.1）
 
 委派把“一个群消息”升级成“一个可以调用工具的子 Agent”，因此按高风险能力处理。
@@ -309,7 +344,7 @@ Group-Talk-L 的每个群消息都可能：
 
 已知残余风险：子代理仍可使用它被允许的文件/命令工具，可能在工作区产生副作用；当前没有“逐任务人工批准”对话框，只有人类显式开启 `allowAgentDelegate` + organizer 角色 + 安全主管审计。高价值群建议保持默认关闭，或只在受控组织者会话开启。
 
-测试：`test/security-2.test.mjs` 覆盖角色门禁、默认关闭、provider 缺失、`maxDepth: 0`、群工具 deny、超时/dispose、每日配额、control 行持久化、人类优先 envelope。
+测试：`test/security-2.test.mjs` 覆盖角色门禁、默认关闭、provider 缺失、`maxDepth: 0`、群工具 deny、超时/dispose、每日配额、control 行持久化、人类优先 envelope；`test/release-2.3.test.mjs` 覆盖 HTTP human-only、purpose 域门禁、queue/steer、target 账本、CJK 估算、笔记配额、audit 按需、lossy store。
 
 ## 10. 结论
 
@@ -318,8 +353,10 @@ Group-Talk-L 的每个群消息都可能：
 - 单次广播最多 6 个收件人；
 - 单发送者每天最多 30 条消息、60 次投递、估算 60,000 token；
 - 单群每天最多 60 条消息、120 次投递、估算 120,000 token；
-- 单目标每天最多 20 次群唤醒、估算 30,000 token；
-- prompt ≤ 3500 字符，Web 每群 ≤ 20 条，工具历史 ≤ 12,000 字符；
+- 单目标每天最多 40 次群唤醒、估算 30,000 token（CJK-aware 估算，不是账单）；
+- prompt ≤ 3500 字符，Web 每群 ≤ 20 条消息，审计按需，工具历史 ≤ 12,000 字符；
+- 笔记 10/分、50/天；control 独立 20 行窗口，聊天不被笔记挤掉；
+- Web 路由只代表人类；跨站 403；lossy store 只读并返回 503；
 - 所有入口共享同一账本，重启不丢失。
 
 这些是保守上限，不是绝对安全证明；但已覆盖本次调查识别的高危放大路径，可以进入受控试用。

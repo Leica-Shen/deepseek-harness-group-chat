@@ -170,3 +170,35 @@ test('model tool schemas follow allowAgentCreate and allowAgentManage', () => {
   assert.deepEqual(names({ allowAgentDelegate: true }), [...base, 'group_talk_delegate'].sort())
   assert.equal(names({ allowAgentCreate: true, allowAgentManage: true, allowAgentDelegate: true }).length, 8)
 })
+
+test('a duplicate mount for the same data file is ignored', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-group-talk-l-dup-'))
+  const file = join(dir, 'groups.json')
+  const commands = []
+  const routes = []
+  const ctx = {
+    agents: { list: () => [], get: () => undefined },
+    commands: { register: (definition) => { commands.push(definition); return () => {} } },
+    effect: (factory) => factory(),
+    on: () => () => {},
+    get: () => undefined,
+    inject: (_deps, callback) => callback({
+      connection: { fetch: { register: (route) => { routes.push(route); return () => {} } } },
+      effect: (factory) => factory(),
+    }),
+  }
+  const first = apply(ctx, { dataFile: file })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(commands.length, 1)
+  assert.equal(routes.length, 1)
+  const second = apply(ctx, { dataFile: file })
+  assert.equal(commands.length, 1)
+  assert.equal(routes.length, 1)
+  first()
+  const third = apply(ctx, { dataFile: file })
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(commands.length, 2)
+  assert.equal(routes.length, 2)
+  third()
+  second()
+})

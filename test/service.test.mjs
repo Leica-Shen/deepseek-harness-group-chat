@@ -89,7 +89,7 @@ test('creates a group, sends to aliases, roles and everyone else', async () => {
   assert.equal(broadcast.deliveries.length, 2)
   assert.equal(calls.length, 5)
 
-  const reply = await service.send('session-b', { group: group.id, target: '@owner', message: 'On it.' })
+  const reply = await service.send('session-b', { group: group.id, target: '@owner', message: 'On it.', purpose: 'review' })
   assert.equal(reply.deliveries[0].alias, 'owner')
   assert.equal(calls.length, 6)
 

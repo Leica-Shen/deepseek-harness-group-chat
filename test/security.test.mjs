@@ -131,7 +131,7 @@ test('daily Host and per-sender token ceilings fail closed before delivery', asy
   )
   assert.equal(host.calls.length, 1)
 
-  const tokens = await harness({ maxEstimatedTokensPerSenderPerBurst: 1500, assumedTokensPerDelivery: 1000 })
+  const tokens = await harness({ maxEstimatedTokensPerSenderPerBurst: 2000, assumedTokensPerDelivery: 1000 })
   const tg = await group(tokens.service)
   await tokens.service.send('session-a', { group: tg.id, target: '@m1', message: 'x'.repeat(1200) })
   await assert.rejects(

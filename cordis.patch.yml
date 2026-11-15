@@ -15,12 +15,16 @@
         allowAgentDelegate: false
         # Secretary/organizer audited notes; low risk, on by default.
         allowAgentNote: true
+        # Per-agent note limits; notes share the audit log, not the chat buffer.
+        maxNotesPerAgentPerMinute: 10
+        maxNotesPerAgentPerDay: 50
         # Empty = first registered subagent provider.
         delegationProvider: ''
         delegationTimeoutMs: 120000
         maxDelegationsPerDay: 3
         maxDelegationChars: 6000
-        # Human messages bypass target cooldown/caps; group/global budgets remain.
+        # Human messages bypass target caps/burst; group/global/sender budgets
+        # and the sender cooldown still apply.
         humanBypassTargetCaps: true
         # Empty resolves $DSH_HOME/group-talk-l/groups.json.
         dataFile: ''
@@ -36,10 +40,10 @@
         policyRecentMessages: 0
         # Hard ceiling for the whole Group-Talk-L prompt section.
         policyMaxChars: 3500
-        # steer = DSH-native "interject": a running member receives at the next
-        # step boundary, an idle member wakes normally. queue = wait for the
-        # member's next turn (opt-in for quiet workflows).
-        deliveryMode: steer
+        # Ambient delivery (the default priority). queue waits for the target's
+        # current turn to finish; steer is the advanced interject override.
+        # Urgent messages always use steer unless a caller passes mode explicitly.
+        deliveryMode: queue
         # Per-message body cap.
         maxMessageChars: 2000
         # One send may resolve to at most this many recipients.

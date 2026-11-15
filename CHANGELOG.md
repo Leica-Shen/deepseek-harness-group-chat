@@ -1,5 +1,51 @@
 # Changelog
 
+## 2.3.0
+
+A security and semantics release. No new chat surface; the goal is to make the
+existing promises true.
+
+- **Web identity is human-only.** `/api/group-talk-l` no longer trusts a
+  body/query `sessionId`; a non-human value is rejected with `human-only`.
+  The official panel already sent `human` only, so this removes a
+  confused-deputy path without changing the UI. Cross-site `Origin` /
+  `Sec-Fetch-Site` requests are rejected too.
+- **Priority is a mechanism, not a sentence.** `ambient` now defaults to the
+  DSH `queue` mode (delivered after the target's current turn), `urgent` uses
+  `steer` (next step boundary). An explicit `mode` still overrides both.
+  This matches the 2.1 promise "do not interrupt".
+- **Purpose gate is in the domain service.** Non-organizer members need
+  `purpose=verify|correct|review|anomaly|question|blocked|handoff` for peer
+  messages; replies that only land in the room (`@human`) are exempt because
+  they wake no session. Role matching is exact, so `non-organizer` is not an
+  organizer. Envelope/policy/help examples now include `purpose`.
+- **Human priority no longer starves peers.** Human messages skip target caps
+  but no longer charge the target's daily delivery/token ledger; the sender
+  cooldown now applies to everyone. The human can still send when a target cap
+  is exhausted, and peers are not blocked for the rest of the day.
+- **Notes are bounded.** `maxNotesPerAgentPerMinute` (10) and
+  `maxNotesPerAgentPerDay` (50) are enforced. Control rows keep their own
+  20-row transcript window and never evict chat rows; the full history stays in
+  `audit`. The panel fetches audit rows on demand instead of shipping them in
+  the 8-second list poll.
+- **Token estimate is CJK-aware.** The fixed `chars / 4` estimate is replaced
+  by a CJK-aware estimate (CJK × 1.5, other ÷ 4). It is still a conservative
+  guard, not a bill; the docs now say so explicitly.
+- **Store safety.** Loading a document that drops a member or group now marks
+  the store read-only instead of persisting the loss on the next write; HTTP
+  returns 503. A duplicate mount for the same data file is ignored instead of
+  creating a second writer.
+- **Smaller fixes.** `maxMessageChars` is aligned with the 8,000-character hard
+  cap; `group_talk_list` bounds each recent transcript line to 240 characters;
+  the policy advertises note/delegation tools only when the profile enables
+  them; the panel disables an over-cap `*` target, nudges `*`/`#role` rooms and
+  counts the human member in the roster; the in-transcript badge no longer
+  scans the whole DOM on every mutation.
+- **Docs and tests.** 101 tests (including 2.3 regressions); README/SECURITY/
+  DESIGN numbers and data models aligned with the code. Delegation remains
+  `allowAgentDelegate: false` by default and still needs a real-provider run
+  before it is marketed as stable.
+
 ## 2.2.0
 
 - **Collapsible navigation and members.** The whole left group list can be

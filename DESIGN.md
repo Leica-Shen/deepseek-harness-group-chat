@@ -64,7 +64,7 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 2. 在同一个 store 事务中检查 fan-out、冷却、发送者/群/目标每日预算与估算 Token，并记账；
 3. append 消息（`deliveries: pending`）并原子落盘；
 4. 对每个目标调用 Session controller，并向其 `prompt(request, signal)` 传入 30 秒 `AbortSignal.timeout`；
-5. 将结果写回 `deliveries`；默认 `steer` 让运行中目标在下一个 step 收到。
+5. 将结果写回 `deliveries`；`ambient` 默认 `queue`（完成当前回合后），`urgent` 默认 `steer`（下一个 step 边界）。
 
 任意预算检查失败都会让整个事务不提交：消息不出现、不投递、也不消耗额度。重复抑制返回上一条已接纳消息，避免重试循环。
 
@@ -75,7 +75,7 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 
 `requestId` 固定为消息 id + 目标 session id，复用了 Session controller 的 inbox 去重；重试同一消息不会产生重复用户消息。
 
-`steer` 是默认模式，等价于 DSH 输入框的「插话」：对运行中的目标在**下一个 step 边界**投递，不中断当前工具执行，也不等整轮结束；对不活跃的目标仍会 resume 并启动。`queue` 保留为显式配置，适合希望严格等对方完成本轮的安静工作流。
+`ambient` 默认使用 `queue`：对运行中的目标，消息在它完成当前回合并进入下一轮后才被读取，兑现“不打断”；`urgent` 使用 `steer`，等价于 DSH 输入框的「插话」，在**下一个 step 边界**投递，不中断当前工具执行。显式 `mode` 仍可覆盖两者；`deliveryMode` 控制 ambient 的默认模式。
 
 每个消息还会经过滑动窗口 burst 限制（发送者/群/Host/目标）与 Host 级日预算；这些限制在写入 transcript 前原子检查，避免多个群并行时把同一会话淹没。
 
@@ -105,9 +105,9 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 
 ### 2.9 人类优先与审计（2.1）
 
-- 人类消息按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。每条消息再带 `priority: ambient`（默认，不改变当前计划，完成当前 step/回合后再读）或 `urgent`（下一个 step 边界优先处理）；两者都不中止运行中的工具。
-- 人类发送绕过 target 冷却、target burst、target 日投递/Token 上限（`humanBypassTargetCaps`），但仍计入 group/Host/sender 预算，避免变成无限广播总线。理由：人的一句纠正不能被某个成员的日额度挡住；群级/全局预算仍防止滥用。
-- `kind: "control"` 的 transcript 行保存 `action/taskId/outcome/reason/parentRequestId/supersededBy`。审计视图只读展示这些行与失败/未确认投递；人类不需要依赖模型转述。
+- 人类消息按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。`ambient` 默认排队到目标完成当前回合，`urgent` 在下一个 step 边界；两者都不中止运行中的工具。
+- 人类发送绕过 target burst/日投递/Token 上限（`humanBypassTargetCaps`），且不消耗 target 日账本；但仍计入 group/Host/sender 预算，并受 sender 冷却约束。理由：人的一句纠正不能被某个成员的日额度挡住，也不能让同伴当天再也收不到消息。
+- `kind: "control"` 的 transcript 行保存 `action/taskId/outcome/reason/parentRequestId/supersededBy`。成员加入/离开/角色/改名/解散也会写入只读审计事实。审计视图只读展示这些行与失败/未确认投递；人类不需要依赖模型转述。
 - 面板的「保持打开」只保护“自动切换”场景：面板打开期间写入 pin；用户在面板外的 pointerdown 或「返回对话」会清除 pin，因此显式导航不会被弹回。
 
 ### 2.10 子代理委派（2.1）
@@ -115,7 +115,7 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 - 只在 organizer/owner 成员的 live Agent 下 `subagents.start`；`maxDepth: 0`，deny 全部 `group_talk_*`，结果截断，超时 `AbortController`，运行结束 `dispose()`。
 - 子代理不是群成员，不注入 group policy，不进入成员列表；它的 start/complete/fail 只作为 control 行进入群记录。
 - `allowAgentDelegate` 默认 false；开启后还需要 organizer 角色、live parent、每日配额。委派只由 organizer/owner 的工具发起；人类面板**不提供**手动委派按钮，人类给组织者发任务即可。live parent 找不到就 fail closed，不假装成功。
-- 委派不是 task/ack 控制层的替代：2.1 有 per-message `priority: ambient/urgent`（面板不再用 queue），但还没有 `interrupt`、`ack`、`supersede`；这些是 2.2 的控制层。
+- 委派不是 task/ack 控制层的替代：2.3 有 `ambient→queue` / `urgent→steer` 与 service 级 purpose 门禁，但仍没有 `interrupt`、`ack`、`supersede`；这些留待后续控制层。
 
 ## 3. 组件
 
@@ -185,7 +185,8 @@ interface Group {
   updatedAt: number
   dissolvedAt?: number
   members: Member[]
-  messages: TranscriptEntry[]
+  messages: TranscriptEntry[]   // last historyLimit chat/system + last 20 control rows
+  audit: TranscriptEntry[]      // control rows, retained up to max(200, historyLimit)
 }
 
 interface Member {
@@ -198,25 +199,34 @@ interface Member {
 
 type TranscriptEntry = {
   id: string
-  kind: 'message' | 'system'
+  kind: 'message' | 'system' | 'control'
   at: number
   fromSessionId?: string
   fromAlias?: string
   target?: string
   text: string
+  priority?: 'ambient' | 'urgent'
+  purpose?: 'verify' | 'correct' | 'review' | 'anomaly' | 'question' | 'blocked' | 'handoff'
   estimatedTokens?: number
   deliveries: Delivery[]
+  // control rows only
+  action?: string
+  taskId?: string
+  outcome?: string
+  reason?: string
+  parentRequestId?: string
+  supersededBy?: string
 }
 
 interface Delivery {
   sessionId: string
   alias: string
-  status: 'pending' | 'delivered' | 'failed'
+  status: 'pending' | 'delivered' | 'failed' | 'unknown' | 'in-room'
   error?: string
 }
 ```
 
-`messageTotal` 只在访问视图中出现，表示当前保留的 transcript 条数；`historyLimit` 裁剪只发生在发送追加时。Web 只取 `uiMessageLimit` 条，工具历史再受 `maxHistoryToolChars` 限制。
+`messageTotal` / `auditTotal` 只在访问视图中出现；`historyLimit` 裁剪聊天/系统行，control 行另有 20 行窗口，完整 control 历史在 `audit`。Web 列表只取 `uiMessageLimit` 条消息且默认不带 audit；审计视图按需请求。工具历史再受 `maxHistoryToolChars` 限制。
 
 ## 5. UI 风格
 
@@ -235,12 +245,14 @@ interface Delivery {
 | --- | --- |
 | `groups.json` 损坏 | 移动到 `.corrupt-<timestamp>`，空状态启动，日志告警 |
 | 读文件失败 | 拒绝写入，避免覆盖；命令/HTTP 返回错误 |
+| 载入丢弃成员/群 | store 只读，HTTP 503；原文件保留待修复 |
+| 同一 dataFile 重复挂载 | 第二个实例被忽略并告警 |
 | 成员会话不可见 | 创建/添加时拒绝；若 list 本身失败，仅记录并放行（list 是额外保护，不是唯一真源） |
 | 目标会话已被归档 | Session controller 可能接纳但 turn 被 archived gate 阻止；transcript 记录 delivered，UI 仍可通过成员跳转查看 |
 | 预算超限 | 在写入前返回 `rate-limited` / `quota-exceeded` / `fanout-exceeded`；消息不存在、未投递、未记账 |
 | 发送太快 | 全局 `sendCooldownMs` 拒绝；等待后重试 |
 | 重复重试 | 返回 `deduplicated`，不产生第二次投递 |
-| 目标投递失败 | transcript 记录 `failed` + error；发送命令/工具返回失败列表，不回滚已存消息；额度已记账 |
+| 目标投递失败 | transcript 记录 `failed` + error；发送命令/工具返回失败列表，不回滚已存消息；额度已记账（人类 target 不记账） |
 | delivery 回写失败 | 日志告警；消息仍在 transcript 中，状态 pending |
 | 进程在投递中途崩溃 | 重启后消息为 pending，不自动重发（避免重复） |
 | 群在发送中途被删除 | delivery 回写跳过；send 返回已生成的结果 |
@@ -257,7 +269,10 @@ interface Delivery {
 - `client-render.test.mjs`：初始空态、群详情、创建页的渲染 smoke test；
 - `http.test.mjs`：认证 Fetch 路由、limits/usage、429 映射；
 - `protection.test.mjs`：无保护放大基线、fan-out、冷却、去重、sender/group/target/Token 预算、群膨胀、prompt/UI/历史上限、账本持久化；
-- `config.test.mjs`：默认值与非法值回退。
+- `config.test.mjs`：默认值与非法值回退；
+- `security.test.mjs`：target/sender/group/Host burst、Host 日预算、并发、envelope 脱敏、0600/0700；
+- `security-2.test.mjs`：人类优先、秘书/组织者/安全主管、委派、control 持久化、priority；
+- `release-2.3.test.mjs`：HTTP human-only、purpose 域门禁、queue/steer、target 账本、CJK 估算、笔记配额、audit 按需、list 上限、lossy store、8,000 字上限。
 
 ## 8. 明确不做
 
@@ -265,6 +280,8 @@ interface Delivery {
 - 不做群内文件/图片附件；
 - 不做群主转移；
 - 不做跨 Host 进程锁；
+- 不做会话级 Web API（Web 路由只代表人类；会话用 scoped tools）；
+- 不做多租户/多操作者隔离（已安装插件与同源脚本同属信任域）；
 - 不做基于真实账单的 token 计量（采用保守估算）；
 - 不做群消息内容审核；
 - 不做真实“群聊 Session”或消息回溯重放到新上下文；

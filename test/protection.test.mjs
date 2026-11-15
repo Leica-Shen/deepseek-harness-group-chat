@@ -148,7 +148,7 @@ test('sender, target and group daily budgets reject before delivery', async () =
 
 test('estimated token budget is charged per recipient and stops a group', async () => {
   const { service, calls } = await harness({
-    dailyEstimatedTokensPerGroup: 2500,
+    dailyEstimatedTokensPerGroup: 4000,
     assumedTokensPerDelivery: 1000,
     maxRecipientsPerSend: 6,
     sendCooldownMs: 0,

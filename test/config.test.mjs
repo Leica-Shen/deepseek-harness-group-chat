@@ -12,7 +12,7 @@ test('conservative guard defaults and explicit overrides resolve', () => {
     assert.equal(defaults.sendCooldownMs, 3000)
     assert.equal(defaults.dailyEstimatedTokensPerGroup, 120000)
     assert.equal(defaults.policyMaxChars, 3500)
-    assert.equal(defaults.deliveryMode, 'steer')
+    assert.equal(defaults.deliveryMode, 'queue')
     assert.equal(defaults.burstWindowMs, 60000)
     assert.equal(defaults.maxDeliveriesPerTargetPerBurst, 6)
     assert.equal(defaults.dailyMessagesPerHost, 300)

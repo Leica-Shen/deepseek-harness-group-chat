@@ -1,3 +1,5 @@
+> **2.3.0 note (2026-11-15):** this document records the 2.0 review cycle. The 2.3 release closes the remaining P1s (human-only Web identity, service-level purpose gate, queue/steer priority, human target ledger, lossy-store refusal, note/audit bounds). See `CHANGELOG.md` 2.3.0 for the current behavior.
+
 # Response to the 2026-11-14 review
 
 This note maps the review's Group-Talk-L findings to the current code. It is

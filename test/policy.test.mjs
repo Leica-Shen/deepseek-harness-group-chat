@@ -37,7 +37,7 @@ const group = {
 }
 
 test('builds a member prompt with the group protocol and live roster', () => {
-  const policy = buildGroupPolicy([group], 'session-a', { recentLimit: 4 })
+  const policy = buildGroupPolicy([group], 'session-a', { recentLimit: 4, maxChars: 100000 })
   assert.match(policy, /## Group-Talk-L/)
   assert.match(policy, /"Release review" \(grp_demo\)/)
   assert.match(policy, /@reviewer \(Reviewer\)/)

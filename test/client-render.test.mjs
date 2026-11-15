@@ -240,7 +240,7 @@ test('waiting survives system rows, covers #role, and clears on a reply', () => 
   const waiting = internals.deriveWaiting(base, 'a')
   assert.equal(waiting.target, '#Reviewer')
   assert.equal(waiting.since, 10)
-  assert.equal(waiting.nudgeable, false)
+  assert.equal(waiting.nudgeable, true)
 
   const replied = {
     ...base,
