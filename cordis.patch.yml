@@ -61,7 +61,9 @@
         maxEstimatedTokensPerSenderPerBurst: 12000
         maxEstimatedTokensPerGroupPerBurst: 24000
         maxEstimatedTokensPerHostPerBurst: 60000
-        # Daily, UTC-reset budgets.
+        # Daily, UTC-reset budgets. @human is exempt from the per-sender
+        # delivery/token ceilings (group/Host ceilings still apply); the human
+        # message count and cooldown remain.
         dailyMessagesPerHost: 300
         dailyDeliveriesPerHost: 500
         dailyEstimatedTokensPerHost: 300000
@@ -70,7 +72,7 @@
         dailyMessagesPerGroup: 60
         dailyDeliveriesPerGroup: 120
         dailyDeliveriesPerTarget: 40
-        # Conservative estimated prompt allowance; not a billing statement.
+        # Lower-bound estimated prompt allowance; not a billing statement.
         dailyEstimatedTokensPerSender: 60000
         dailyEstimatedTokensPerGroup: 120000
         dailyEstimatedTokensPerTarget: 30000

@@ -9,16 +9,18 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 ## 2.3 新增
 
 > **2.3.0 是一次安全/语义修复版，不加新聊天面。** 核心是让原有承诺真正成立。
+>
+> **2.3.1（发布当天）：** 操作者不再被 per-sender 投递/Token 上限锁死。此前一次 6 人广播约记 6,500 估算 token，第二条在同一分钟就会被 sender burst 上限拒绝，约第 10 条广播会被 sender 日投递上限拒绝——面板却仍显示“今日已发 10/30 条”。现在群/Host 预算、sender 消息条数与冷却仍然生效，只有 sender 的投递/Token 上限对 `@human` 豁免（`npm test` 102/102）。
 
 - **Web 身份只属于人类**：`/api/group-talk-l` 不再信任 body/query 里的 `sessionId`；非 `human` 直接返回 `human-only`。官方面板本来只传 `human`，所以 UI 不变，但“同源脚本冒充任意会话”的混淆代理路径被移除；跨站 `Origin` / `Sec-Fetch-Site` 也会被拒绝。
 - **优先级成为机制**：`ambient` 默认使用 DSH `queue`（目标完成当前回合并进入下一轮后才读），`urgent` 使用 `steer`（下一个 step 边界）。显式 `mode` 仍可覆盖。2.1 说的“不打断”现在是真的。
 - **发送门槛下沉到领域层**：非 organizer/owner 的成员发 peer 消息必须带 `purpose=verify|correct|review|anomaly|question|blocked|handoff`；只落在房间里、不唤醒会话的 `@human` 回复豁免。角色匹配改为精确匹配（`non-organizer` 不再被误判为 organizer）；envelope/policy/help 的示例都补上了 `purpose`。
 - **人类优先不再饿死同伴**：人类消息仍绕过 target 上限，但不再消耗 target 的日投递/Token 账本；发送者冷却对所有人生效。人对一个成员发满 40 条后，其他成员仍能给它发消息。
 - **笔记有界**：`maxNotesPerAgentPerMinute`（10）与 `maxNotesPerAgentPerDay`（50）；控制行在 transcript 里拥有独立的 20 行窗口，不再挤掉聊天；完整历史留在 `audit`。成员加入/离开/角色/改名/解散也会写入只读审计事实。面板改为按需拉取审计，不再让 8 秒轮询携带整段 audit。
-- **Token 估算感知 CJK**：固定 `chars / 4` 改为 CJK × 1.5、其他 ÷ 4；仍然只是保守限流，不是账单。
+- **Token 估算感知 CJK**：固定 `chars / 4` 改为 CJK × 1.5、其他 ÷ 4；仍然只是**下限**限流估算，不是账单。
 - **存储更安全**：载入时若有成员/群被丢弃，store 转为只读、HTTP 返回 503，不再在下次写入时把丢失持久化；同一 `dataFile` 的重复挂载会被忽略。
 - **小修**：`maxMessageChars` 与 8000 字符硬上限对齐；`group_talk_list` 每条最近记录截到 240 字符；policy 只在开关打开时宣传 note/delegate；面板在超过 fan-out 时禁用“全部参与者”，`*`/`#role` 也支持催复，成员计数包含人类；会话内徽标不再每次 DOM 变更全表扫描。
-- **测试/文档**：101 个测试；README/SECURITY/DESIGN 的数字、数据模型与 2.3 行为对齐。子代理委派仍是默认关闭、需要真实 provider 验收的实验能力。
+- **测试/文档**：102 个测试；README/SECURITY/DESIGN 的数字、数据模型与 2.3 行为对齐。子代理委派仍是默认关闭、需要真实 provider 验收的实验能力。
 
 ## 2.2 新增（历史）
 
@@ -208,13 +210,13 @@ JSON 中的 `from` 身份来自服务端成员记录，不能由发送方伪造�
 | 发送冷却 | `3000ms` | 同一发送者跨所有群的全局冷却，抑制突发洪水 |
 | 重复抑制 | `30000ms` | 同一发送者 + 目标 + 正文在窗口内只投递一次；重复调用返回 `deduplicated` |
 | 每日消息数/发送者 | `30` | 限制单个会话发起次数 |
-| 每日投递数/发送者 | `60` | 限制 fan-out 总量 |
+| 每日投递数/发送者 | `60` | 限制 fan-out 总量（`@human` 豁免） |
 | 每日消息数/群 | `60` | 限制单群整体活跃度 |
 | 每日投递数/群 | `120` | 限制单群总唤醒次数 |
 | 每日投递数/目标 | `40` | 限制单个会话被群消息唤醒的次数 |
-| 每日估算 Token/发送者 | `60000` | 发送者维度的保守 Token 预算 |
-| 每日估算 Token/群 | `120000` | 群维度的保守 Token 预算 |
-| 每日估算 Token/目标 | `30000` | 目标会话维度的保守 Token 预算 |
+| 每日估算 Token/发送者 | `60000` | 发送者维度的估算下限（`@human` 豁免） |
+| 每日估算 Token/群 | `120000` | 群维度的估算下限 |
+| 每日估算 Token/目标 | `30000` | 目标会话维度的估算下限 |
 | 单次投递估算成本 | `800` | 加到 envelope 估算上的固定上下文开销 |
 
 ### 2. Token 估算口径
@@ -225,13 +227,15 @@ estimateTokens = ceil(CJK字符 × 1.5 + 其他字符 ÷ 4)
 total     = perTarget × recipientCount
 ```
 
-这是**限流估算**，不是账单：
+这是**下限**限流估算，不是账单，也不应被当成真实成本上限：
 
 - CJK 按 1.5 token/字、其他字符按 4:1 估算；比旧版固定 `/4` 更接近中文实际；
-- 没有计入目标会话已有的长上下文；每次唤醒目标都会重读它自己的上下文；
-- 固定开销用于覆盖 system prompt、工具 schema、历史记录等。
+- 没有计入目标会话已有的长上下文；每次唤醒目标都会重读它自己的上下文，一次 turn 的真实消耗可能是估算的 5–30 倍；
+- 固定开销 `assumedTokensPerDelivery`（默认 800）只覆盖信封/system prompt/工具 schema 的一部分，不覆盖目标重读上下文与工具循环；
+- 常驻成员的 scoped prompt section（默认最多 3,500 字符，约 900–1,000 token）在**每次**请求都会进入 system prompt，但不计入发送账本；
+- 真实账单请在 Harness/模型层监控；本插件的四层预算只负责“别让群聊无限放大”。
 
-因此预算打满不代表真实花费被精确封顶；这正是同时保留 `dailyDeliveriesPerTarget` 的原因。可以在 Loader row 中降低 `dailyEstimatedTokens*`、`dailyDeliveriesPerTarget` 或 `assumedTokensPerDelivery`。
+因此预算打满不代表真实花费被精确封顶；这正是同时保留 `dailyDeliveriesPerTarget` 的原因。可以在 Loader row 中降低 `dailyEstimatedTokens*`、`dailyDeliveriesPerTarget` 或 `assumedTokensPerDelivery`。面板当前只显示消息条数，不显示 token 账本；需要严格控费时请同时收紧投递次数上限。
 
 ### 3. 每日账本
 
@@ -263,7 +267,7 @@ total     = perTarget × recipientCount
 
 ### 6. 权限与身份
 
-- **你（人类操作者）**：以 `@human` 出现在房间里，可添加/移除参与者、改角色/职责/改名/解散/删除；Web 路由只代表你，body/query 里的 `sessionId` 不能冒充会话；你的消息绕过 target 上限，但仍受 sender 冷却与群/Host 预算约束；
+- **你（人类操作者）**：以 `@human` 出现在房间里，可添加/移除参与者、改角色/职责/改名/解散/删除；Web 路由只代表你，body/query 里的 `sessionId` 不能冒充会话；你的消息绕过 target 上限与 sender 投递/Token 上限（一次广播不再按收件人数锁死操作者），但仍受 sender 消息条数、sender 冷却、群/Host 预算约束；
 - **参与者（已有会话）**：可以 `list`、`history`、`send`、`leave`；没有会话级「群主」；非 organizer/owner 发 peer 消息必须带 `purpose`，只落在房间的 `@human` 回复豁免；
 - 角色只是路由与职责标签，不是权限；organizer/owner 的豁免用精确角色匹配；
 - 笔记限速 10/分、50/天；控制行不占聊天缓冲；
@@ -348,11 +352,11 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `dailyDeliveriesPerHost` | `500` | 1–1000000 | 全 Host 每日投递上限 |
 | `dailyEstimatedTokensPerHost` | `300000` | 1000–1e9 | 全 Host 每日估算 Token |
 | `dailyMessagesPerSender` | `30` | 1–10000 | 每日消息/发送者 |
-| `dailyDeliveriesPerSender` | `60` | 1–100000 | 每日投递/发送者 |
+| `dailyDeliveriesPerSender` | `60` | 1–100000 | 每日投递/发送者（`@human` 豁免） |
 | `dailyMessagesPerGroup` | `60` | 1–10000 | 每日消息/群 |
 | `dailyDeliveriesPerGroup` | `120` | 1–100000 | 每日投递/群 |
 | `dailyDeliveriesPerTarget` | `40` | 1–100000 | 每日投递/目标（2.0.3 起 40；20 在活跃委员会里会先打满） |
-| `dailyEstimatedTokensPerSender` | `60000` | 1000–1e8 | 每日估算 Token/发送者 |
+| `dailyEstimatedTokensPerSender` | `60000` | 1000–1e8 | 每日估算 Token/发送者（`@human` 豁免） |
 | `dailyEstimatedTokensPerGroup` | `120000` | 1000–1e8 | 每日估算 Token/群 |
 | `dailyEstimatedTokensPerTarget` | `30000` | 1000–1e8 | 每日估算 Token/目标 |
 | `assumedTokensPerDelivery` | `800` | 50–100000 | 每次投递固定估算开销 |

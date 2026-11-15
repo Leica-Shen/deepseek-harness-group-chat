@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.3.1
+
+A one-line-behavior release found while preparing the Market listing.
+
+- **The operator is no longer locked out by per-sender delivery/token caps.**
+  A six-recipient broadcast used to charge ~6,500 estimated tokens against the
+  human's own sender budget, so the second broadcast inside the same minute was
+  rejected by the sender burst ceiling, and roughly the tenth by the sender
+  daily delivery ceiling — while the panel still showed "10/30 messages". The
+  per-sender delivery, daily-token and burst-token ceilings now apply to agents
+  only; the human keeps the sender message count, sender cooldown, and the
+  group/Host budgets. Peer sends are unchanged. Regression:
+  `test/release-2.3.test.mjs` (102 tests).
+- **Token docs call the estimate a lower bound, not a conservative cap.** The
+  README now states that a target's context re-read is not counted, that real
+  spend can be 5–30× the estimate, and that the always-on member prompt section
+  (roughly 900–1,000 tokens per request) is outside the send ledger.
+
 ## 2.3.0
 
 A security and semantics release. No new chat surface; the goal is to make the

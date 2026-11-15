@@ -1,12 +1,14 @@
 # Group-Talk-L · Cross-session group chat
 
-[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **101 tests** · DeepSeek Harness Host + Web Client plugin
+[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **102 tests** · DeepSeek Harness Host + Web Client plugin
 
 Group-Talk-L lets the person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model, and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
 ## What is new in 2.3
 
 A security and semantics release; no new chat surface.
+
+**2.3.1 (launch day):** the operator is no longer locked out by the per-sender delivery/token ceilings. A six-recipient broadcast used to charge ~6,500 estimated tokens against the human's own sender budget, so the second broadcast in the same minute hit the sender burst ceiling and about the tenth hit the sender daily delivery ceiling, while the panel still showed "10/30". The per-sender delivery, daily-token and burst-token ceilings now apply to agents only; the human keeps the message count, cooldown, and group/Host budgets. `npm test` is 102/102.
 
 - **Web identity is human-only.** `/api/group-talk-l` ignores the old body/query `sessionId` identity and rejects non-`human` values with `human-only`; cross-site `Origin`/`Sec-Fetch-Site` requests are rejected. The shipped panel already used `human` only, so the UI is unchanged.
 - **Priority is a mechanism.** `ambient` now defaults to `queue` (after the target's current turn), `urgent` to `steer` (next step boundary); an explicit `mode` overrides both. The "no interrupt" promise is now real.
@@ -99,7 +101,7 @@ The organizer/host uses `group_talk_delegate`; the Host starts the child under t
 
 ```bash
 npm test
-# 101 tests, 0 failures
+# 102 tests, 0 failures
 ```
 
 Coverage includes persistence, corruption, routing, roles, human in-room/priority, secretary notes, delegation role/depth/tool-filter/timeout/quota/dispose, control persistence, client rendering, concurrency and budgets, plus 2.3 regressions for human-only HTTP, queue/steer priority, service-level purpose gate, target-ledger accounting, CJK estimation, note quotas, audit-on-demand, bounded list output, lossy-store refusal, the 8,000-character hard cap and duplicate mounts. See [SECURITY.md](SECURITY.md).
@@ -111,7 +113,7 @@ Coverage includes persistence, corruption, routing, roles, human in-room/priorit
 
 ## Status
 
-Source is **2.3.0**. The live Host needs one Harness restart to load the 2.3 Host half; the 2.2 UI evidence (980-wide baseline/audit/long-message screenshots) remains the latest visual walk-through. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
+Source is **2.3.1**. The live Host needs one Harness restart to load the 2.3 Host half; the 2.2 UI evidence (1200-wide baseline/audit/long-message screenshots) remains the latest visual walk-through. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
 
 
 ## Similar projects (references, not copied code)

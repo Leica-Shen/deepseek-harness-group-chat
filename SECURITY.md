@@ -1,6 +1,6 @@
 # Group-Talk-L 安全与滥用防护报告
 
-> 版本：2.3.0 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板与人类身份、持久化账本与 lossy 载入、人类优先、笔记/审计、子代理委派、发送门槛、ambient/urgent 投递。
+> 版本：2.3.1 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板与人类身份、持久化账本与 lossy 载入、人类优先、笔记/审计、子代理委派、发送门槛、ambient/urgent 投递。
 >
 > 结论：2.3.0 关闭了 2.2 评审中的 P1：Web 不再信任 body 里的 `sessionId`、purpose 门槛下沉到域服务、人类消息不再消耗 target 日账本、`ambient` 真正使用 `queue`、lossy store 拒绝写入。残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入**、**已安装插件/同源脚本的信任域** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
 
@@ -194,8 +194,8 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 6. 残余风险
 
-1. **估算不等于账单**  
-   2.3 改为 CJK-aware（CJK × 1.5）并保留 `assumedTokensPerDelivery`，但仍不计目标会话的上下文重读。一个长上下文目标被唤醒 40 次的真实成本可能远高于估算；预算只是限流器，真实成本监控仍应在 Harness/模型层进行。
+1. **估算不等于账单，而且是下限**  
+   2.3 改为 CJK-aware（CJK × 1.5）并保留 `assumedTokensPerDelivery`，但仍不计目标会话的上下文重读。一个长上下文目标被唤醒 40 次的真实成本可能远高于估算（5–30 倍并不罕见）；常驻成员的 prompt section（约 900–1,000 token/次请求）也不在发送账本内。预算只是限流器，真实成本监控仍应在 Harness/模型层进行。
 
 2. **提示注入**  
    envelope 和 prompt 已明确群消息是 untrusted peer content，但模型仍可能被复杂文本影响。插件不做内容审核，也不会自动执行群消息中的工具调用；目标模型仍以正常 agent 规则运行。
@@ -242,7 +242,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 101 个测试：
+当前 102 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -263,7 +263,7 @@ Group-Talk-L 的每个群消息都可能：
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：101/101 通过；
+- [x] `node --test test/*.test.mjs`：102/102 通过；
 - [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
@@ -308,7 +308,7 @@ Group-Talk-L 的每个群消息都可能：
 9. **读取工具循环烧 Token**：list/history 每 Agent 每分钟最多 20 次；超限 fail closed。
 10. **普通回答误解为群回复**：不做自动回传（可能泄露工具结果/私有上下文并形成循环）；envelope、prompt、面板等待提示均明确要求 `group_talk_send`。
 
-新增测试后 **101 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化，以及 2.3 的 HTTP human-only、purpose 域门禁、queue/steer、target 账本、CJK 估算、笔记配额、audit 按需、lossy store、重复挂载）。
+新增测试后 **102 个测试全绿**（含 2.1 的人类优先、秘书/组织者、委派、control 持久化，以及 2.3 的 HTTP human-only、purpose 域门禁、queue/steer、target 账本、CJK 估算、笔记配额、audit 按需、lossy store、重复挂载）。
 
 ### 真实对话验收
 

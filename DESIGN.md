@@ -106,7 +106,7 @@ prompt section 的动态函数在每次模型请求时重新渲染，所以角�
 ### 2.9 人类优先与审计（2.1）
 
 - 人类消息按“用户指令”而不是不可信 peer content 处理；agent 互发仍然是 untrusted data。`ambient` 默认排队到目标完成当前回合，`urgent` 在下一个 step 边界；两者都不中止运行中的工具。
-- 人类发送绕过 target burst/日投递/Token 上限（`humanBypassTargetCaps`），且不消耗 target 日账本；但仍计入 group/Host/sender 预算，并受 sender 冷却约束。理由：人的一句纠正不能被某个成员的日额度挡住，也不能让同伴当天再也收不到消息。
+- 人类发送绕过 target burst/日投递/Token 上限（`humanBypassTargetCaps`），且不消耗 target 日账本；也不受 sender 的投递/Token 上限（2.3.1），但仍计入 group/Host 预算、sender 消息条数，并受 sender 冷却约束。理由：人的一句纠正不能被某个成员的日额度挡住，也不能让同伴当天再也收不到消息；一次广播按收件人数量锁死操作者同样违背“人类优先”。
 - `kind: "control"` 的 transcript 行保存 `action/taskId/outcome/reason/parentRequestId/supersededBy`。成员加入/离开/角色/改名/解散也会写入只读审计事实。审计视图只读展示这些行与失败/未确认投递；人类不需要依赖模型转述。
 - 面板的「保持打开」只保护“自动切换”场景：面板打开期间写入 pin；用户在面板外的 pointerdown 或「返回对话」会清除 pin，因此显式导航不会被弹回。
 

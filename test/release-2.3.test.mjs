@@ -143,6 +143,33 @@ test('human messages skip target budgets but keep the sender cooldown and peer b
   )
 })
 
+test('the operator is not locked out by per-sender delivery/token caps while agents still are', async () => {
+  // A multi-recipient broadcast would otherwise exhaust the default per-sender
+  // delivery/token ceilings after a handful of messages, which contradicts
+  // "human priority" in the one room the operator is driving.
+  const operator = await harness({
+    dailyDeliveriesPerSender: 2,
+    dailyEstimatedTokensPerSender: 1000,
+    maxEstimatedTokensPerSenderPerBurst: 1000,
+    burstWindowMs: 0,
+  })
+  const group = await operator.service.create('human', { name: 'Operator budget', members: MEMBERS })
+  for (let index = 0; index < 3; index += 1) {
+    await operator.service.send('human', { group: group.id, target: '*', message: `operator ${index}` })
+  }
+  assert.equal(operator.prompts.length, 9)
+
+  // Peer sends still obey the same per-sender ceilings.
+  const peer = await harness({ dailyDeliveriesPerSender: 2, dailyEstimatedTokensPerSender: 1e9, burstWindowMs: 0 })
+  const peerGroup = await peer.service.create('human', { name: 'Peer budget', members: MEMBERS })
+  await peer.service.send('session-a', { group: peerGroup.id, target: '@bob', message: 'peer one', purpose: 'review' })
+  await peer.service.send('session-a', { group: peerGroup.id, target: '@bob', message: 'peer two', purpose: 'review' })
+  await assert.rejects(
+    peer.service.send('session-a', { group: peerGroup.id, target: '@bob', message: 'peer three', purpose: 'review' }),
+    /Daily delivery budget|quota-exceeded/u,
+  )
+})
+
 test('the token estimate is CJK-aware instead of a fixed chars/4', () => {
   assert.equal(estimateTextTokens('a'.repeat(400)), 100)
   assert.ok(estimateTextTokens('中'.repeat(100)) >= 150)
