@@ -2,7 +2,7 @@
   "name": "@local/group-talk-l",
   "version": "2.3.1",
   "type": "module",
-  "description": "Group-Talk-L: a full-area group chat for DeepSeek Harness where the person talks to existing sessions through role-tagged participants, with human priority, audited secretary/organizer roles, bounded subagent delegation, dedupe, fan-out caps and daily token budgets.",
+  "description": "群聊 Group-Chat (Group-Talk-L): a full-area cross-session group chat for DeepSeek Harness. The person talks to existing sessions through @alias, #role or * routing, with role assignment, human-priority delivery, audited secretary/organizer notes, bounded subagent delegation, dedupe, fan-out caps and daily token budgets. Each session keeps its own context, model and workspace.",
   "icon": "./icon.svg",
   "main": "lib/index.js",
   "exports": {
@@ -14,6 +14,7 @@
     "lib",
     "cordis.patch.yml",
     "icon.svg",
+    "assets/icon-180.png",
     "README.md",
     "README.en.md",
     "DESIGN.md",
@@ -31,8 +32,11 @@
     "dsh-bundle",
     "dsh-plugin",
     "group-talk-l",
+    "group-chat",
+    "群聊",
     "cross-session",
-    "multi-agent"
+    "multi-agent",
+    "collaboration"
   ],
   "dsh": {
     "bundle": {

@@ -1,10 +1,12 @@
-# Group-Talk-L · 会话群聊
+# 群聊 Group-Chat · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **101 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **102 tests** · DeepSeek Harness Host + Web Client plugin
 
-让 **已有会话** 像同事拉群一样互相说话：通过 `@别名`、`#角色` 或 `*` 发消息，每个会话保留自己的对话、模型和工作区，不合并上下文。
+把 **已经开着的 AI 会话** 拉进一个群，像同事协作一样分工、对话、互相复核。每个会话保留自己的上下文、模型和工作区，**不合并上下文，也不打断正在跑的任务**。
 
-Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控。
+通过 `@别名`、`#角色` 或 `*` 发消息：`@设计师` 找具体成员，`#研究员` 按角色群发，`*` 通知全群。你以「你」（`@human`）的身份直接说话，不需要借某个会话的名义。
+
+群聊 Group-Chat（包名 `@local/group-talk-l`）是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控：fan-out 上限、发送冷却、去重、每日 Token 预算、群数量上限都默认开启，群记录只保存在本机。
 
 ## 2.3 新增
 
@@ -101,7 +103,15 @@ Group-Talk-L 是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不�
 
 本包没有外部运行时依赖。Host 侧只使用 Node 内置模块；Client 侧只使用 Harness 共享的 React 与 UI primitives。
 
-### 方式一：DSH 插件命令
+### 方式一：从 GitHub 直接安装（插件市场同款）
+
+```bash
+dsh plugin --profile desktop add github:Leica-Shen/deepseek-harness-group-chat
+```
+
+装好后在 profile 的 `dsh.profile.bundles` 中确认出现 `@local/group-talk-l`，然后重启一次 Harness。
+
+### 方式二：克隆后用 link 安装
 
 ```bash
 git clone https://github.com/Leica-Shen/deepseek-harness-group-chat.git
@@ -132,7 +142,7 @@ dsh plugin --profile desktop add link:"$PWD"
 
 > **安装后必须重启一次 Harness。** Host 插件模块在进程内缓存，`plugin_manager` 对本地 link 更新的应用阶段会显示 `restart-required`；仅刷新页面不会替换 Host 模块。
 
-### 方式二：手工 link
+### 方式三：手工 link
 
 ```bash
 PLUGIN_DIR="$(cd /path/to/deepseek-harness-group-chat && pwd)"
