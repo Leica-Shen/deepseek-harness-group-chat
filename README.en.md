@@ -6,6 +6,10 @@ Group-Chat (package `@leica-shen/dsh-group-chat`, plugin id `group-talk-l`) lets
 
 Route with `@alias`, `#role` or `*`. The person is `@human` and is in the room, not impersonated by a session. The product goal is not "one more chat UI": it is cross-session coordination that stays bounded when messages fan out, models loop, credentials leak or a room becomes noisy.
 
+## 2.4.3 (patch)
+
+Optimistic send: the local row is inserted before the delivery round-trip, the composer stays usable, and the receipt replaces the row. The docs now list the remaining limits (no turn scheduler, two full JSON writes per send, no GET byte cap, derived read receipts, no at-rest encryption).
+
 ## 2.4.2 (patch)
 
 Credentials are scanned in notes and `refs`; authorization payloads are rejected for every relay intent, not only `confirm`.
@@ -27,7 +31,7 @@ Relay replies are charged; a malformed relay row no longer makes the store read-
 
 ### Release-blocking defects (the old 2.3.2 list)
 
-- **No 30-second blocking send**: the panel inserts its own message optimistically; receipts fill in afterwards. Delivery has a concurrency gate (2 by default) with a 32-entry queue.
+- **The panel no longer waits for the delivery round-trip**: a sent message is inserted optimistically, the composer stays usable, and the receipt replaces the local row. Delivery has a concurrency gate (2 by default) with a 32-entry queue.
 - **`pendingTimeoutMs` is real**: a 15-second maintenance pass expires stale pending rows; a restart only reconciles rows older than the timeout.
 - **Counts match the list**: the human member is rendered as its own row, so the header count, list row and member section agree.
 - **Truncation is explained**: "Last 20 of 62" plus "Load earlier"; messages are no longer silently missing.
@@ -85,6 +89,9 @@ Relay replies are charged; a malformed relay row no longer makes the store read-
 ### Explicit non-goals
 
 - No attachments, images or voice; messages are text plus `refs`.
+- No turn scheduler: a `*` broadcast can still produce simultaneous answers; purpose gates and relay reduce the probability, not the possibility.
+- Every send still rewrites the whole JSON twice (message + receipt); a full 32-room store will feel slower over time, and GET has a per-room window but no byte cap.
+- No undo for delete, no `j/k` navigation, no offline digest.
 - No end-to-end encryption; at-rest protections are 0600, an optional lock and redacted export.
 - Not a multi-tenant boundary; every plugin under the same OS user shares one trust domain.
 - "Read" is derived (the recipient later spoke in the room), not a strongly consistent receipt; use relay when an explicit confirmation matters.
@@ -129,7 +136,7 @@ Coverage includes persistence and corruption recovery, routing and roles, the hu
 
 ## Status
 
-Source is **2.4.2**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
+Source is **2.4.3**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
 
 ## Docs
 

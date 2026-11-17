@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.4.3
+
+The last user-facing gap from the review.
+
+- **Optimistic send in the panel.** The local row is inserted before the
+  delivery round-trip, so a 30-second target admission no longer freezes the
+  experience; the composer stays usable and the receipt replaces the local row.
+  The text is only cleared if the person has not typed something new while the
+  receipt was in flight.
+- Documentation now states the remaining limits honestly: no turn scheduler,
+  two full JSON writes per send, no byte cap on GET, derived read receipts, no
+  at-rest encryption, no attachments/undo/offline digest.
+
+Tests: 152/152.
+
 ## 2.4.2
 
 Security tightening found in the same post-push pass.
