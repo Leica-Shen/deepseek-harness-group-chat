@@ -1,100 +1,122 @@
-# Group-Talk-L UI acceptance matrix (2.2 / 2.3)
+# Group-Chat UI acceptance matrix (2.4)
 
-> **2.3.0 delta (2026-11-15):** `ambient` now uses `queue` and `urgent` uses `steer`; the audit modal fetches its rows on demand; an over-cap “all participants” target is disabled; the member count includes the human operator; `group_talk_list` lines are capped at 240 characters. Re-run this matrix against a restarted 2.3.0 Host before quoting the 2.2 screenshots as current.
->
-Use this after restarting Harness so the **2.2 Host** (capabilities present) is live. Until then the Host is 2.0.3: priority is capability-disabled and real delegation cannot run.
+> **Status:** the matrix below is the **2.4 acceptance target**, not a completed
+> record. The live Host still needs one Harness restart to load the 2.4 Host half;
+> `docs/screenshots/*.jpg` are **2.2 evidence (1200×777)** and remain a layout
+> reference only. Do not quote them as 2.4 UI acceptance.
 
-## Scope clarification
+## Scope
 
-- The human panel has **no manual delegation form**. Delegation is started by an organizer/owner session with `group_talk_delegate`.
-- The human-facing surface is the **read-only delegation audit record** (taskId + started/completed/failed), not a form.
-- An organizer-side delegation UI is a **separate design item**, not part of this acceptance matrix.
+- The human panel has **no manual delegation form**. Delegation is started by an
+  organizer/owner session with `group_talk_delegate`; the panel shows the audited
+  record.
+- Relay is started from a member row ("Confirm with @x") or `/group relay`.
+- The acceptance run must use a real Host and a real group; do not edit
+  `groups.json` or hand-write evidence.
 
 ## Matrix
 
-| # | Window | Zoom | Content |
-| --- | --- | --- | --- |
-| 1 | ~980 px wide | 100% | group panel, capability hint, priority selector disabled (2.0.3) |
-| 2 | ~980 px wide | 125% | long alias member, long message (collapsed), audit |
-| 3 | ~980 px wide | 150% | long message expanded, copy-full, read-only delegation audit record |
-| 4 | ~980 px wide | 130% | same screen: long alias + collapsed + expanded + delegation record |
-| 5 | ~1280 px wide | 100% | baseline after restart; capability hint gone, priority enabled |
+| # | Width / zoom | Scenario |
+| --- | --- | --- |
+| 1 | ~980 px, 100% | Empty state, group list, one room with 2 members |
+| 2 | ~980 px, 125% | 8-member room, long alias, long message collapsed |
+| 3 | ~980 px, 150% | Long message expanded, copy, link confirmation |
+| 4 | ~1280 px, 100% | Baseline: version line, counts, truncation, date separators |
+| 5 | ~1280 px, 130% | Audit modal, export, relay log, settings/stats |
+| 6 | ~1280 px, 150% | Pause banner, held message, resume |
+| 7 | ~980 px, 100% | Language switch (follow system → 中文 → English) and error copy |
+| 8 | ~980 px, 125% | Target menu opened near the bottom of the window (must flip up) |
 
-## Checkpoints
+## Checkpoints (2.4)
 
-- Header actions wrap or stay inside the panel; no clipping.
-- Member list scrolls independently; the last member and the send button stay reachable.
-- Message meta wraps; priority badge reads `环境消息 · 本轮后读取` / `下一步优先 · 不中断当前工具`.
-- `展开全文` is a native button with visible `:focus-visible` inner outline; toggling keeps `.messages` scrollTop; `复制全文` copies `fullText` (not the truncated 600 chars).
-- No horizontal overflow at ~980 px / 125% / 150%.
-- Audit control rows show `审计记录 · 非指令`; the read-only delegation log shows taskId + started/completed/failed.
-- 2.0.3: priority selector disabled + `当前 Host 不支持 priority` hint; 2.2: enabled, no hint.
-- Long alias does not push role tag/actions out; role tags distinguish Organizer / Security Lead / Secretary.
+### Layout
 
-## Capture (manual, no AppleScript)
+- Message area occupies **≥60%** of the panel in a 640 px-tall window with the
+  member section collapsed.
+- Member section is **collapsed by default**; expanding it scrolls independently
+  and the last member is reachable without clipping.
+- Exactly **one** control hides the group list (the sidebar chevron). No second
+  "Hide groups" button in the page head.
+- No horizontal overflow at 980 / 125% / 150%.
+- The composer hint is one ellipsised line; the `?` popover holds the long copy.
+- Dangerous actions (dissolve/delete) live in the "⋯" menu, not under Send.
 
-Previous drafts used `osascript ... set size`, which is blocked by System Events permissions on some machines and is not reproducible. Use the UI:
+### Truthfulness
 
-1. Restart Harness so the version line shows `Group-Talk-L 2.2.0` and the Host warning is gone.
-2. Open **Group chat** from the sidebar (or the session header).
-3. Drag the window's right edge until the content area is about 980 px wide. Exact pixel width is not required; record the approximate width in the filename or note.
-4. Zoom with the app's **View** menu or the standard shortcuts:
-   - `Cmd +` zoom in,
-   - `Cmd -` zoom out,
-   - `Cmd 0` reset.
-   Take one capture at 100%, 125% and 150%; 130% is covered by the 125/150 pair if the menu has no 130% step.
-5. Capture the window:
-   - `Cmd Shift 4`, then Space, then click the Harness window, **or**
-   - `screencapture -x /tmp/group-talk-ui-acceptance.png` for the full screen.
-6. Save under `评审证据/ui-2.2/` with a name that includes host/client version and zoom, e.g. `980-125-host2.2.0-client2.2.0.png`. The 2.0.3 capability-disabled baseline belongs in `评审证据/ui-2.0.3/`, not mixed into `ui-2.2/`.
-7. Generate one `<screenshot>.evidence.json` beside each screenshot with the helper (no AppleScript):
+- The footer shows **one** version when Host and panel match; a mismatch shows a
+  distinct warning with both versions.
+- Header count, list row count and member rows all agree, and the human has its
+  own row ("You (panel)").
+- A truncated transcript says "Last 20 of 62" and offers "Load earlier"; the
+  older page appends without losing scroll position.
+- Times read `HH:mm` with sticky day separators (Today / Yesterday / MM-DD).
+- Group id is collapsed under a "Group chat ID" disclosure and can be copied.
+- Errors stay until dismissed; success notices disappear after ~4.5 s.
+
+### Interaction
+
+- Target menu: arrow keys/Home/End/Esc work; it flips up near the window bottom;
+  an over-cap `*` opens the broadcast confirmation (recipients + estimated
+  tokens) instead of being disabled.
+- Sending inserts the message immediately; a delivery failure marks the row, not
+  the transcript.
+- An empty room disables Send and says why.
+- Enter sends, Shift+Enter adds a line, Cmd/Ctrl+Enter also sends; Esc closes a
+  menu, not the panel while typing.
+- Switching tabs and back refreshes without waiting for the next poll.
+- "Mark all read", mute, hide and "show hidden" behave per browser and are
+  reversible from Settings.
+
+### Security and language
+
+- A message containing an obvious key opens the credential confirmation; after
+  confirming, the row is delivered and the room shows the taint label.
+- Broadcast confirmation shows the cost line; cancelling sends nothing.
+- Pause one room: composer still records, rows read "Held", no member wakes.
+  Resume delivers again.
+- Secret sensitivity hides the model-send path and the panel explains it.
+- Language switch changes panel copy, roles and errors; `#角色` still routes
+  after switching.
+- Relay from a member row shows the relay log with status and rounds; a second
+  relay attempt from the addressed session is refused as a chain.
+
+### Evidence
+
+For every screenshot, write `<screenshot>.evidence.json` with the helper (no
+AppleScript):
 
 ```bash
-cd /Users/Leica_Shen/Desktop/Create/group-talk-l
 node scripts/evidence.mjs \
-  --dir ../评审证据/ui-2.2 \
-  --screenshot 980-125-host2.2.0-client2.2.0.png \
-  --host 2.2.0 \
-  --window 980 \
-  --zoom 1.25 \
-  --capabilities '{"inRoom":true,"priority":true,"control":true,"delegate":true}' \
-  --notes "long alias + long message collapsed"
+  --dir ../评审证据/ui-2.4 \
+  --screenshot 1280-100-host2.4.0-client2.4.0.png \
+  --host 2.4.0 \
+  --window 1280 \
+  --zoom 1 \
+  --capabilities '{"audit":true,"pause":true,"relay":true,"secretScan":true}' \
+  --notes "baseline: single version, counts, truncation, date separators"
 ```
 
-For the 2.0.3 baseline use `--dir ../评审证据/ui-2.0.3`, `--host 2.0.3`, and `--capabilities none` (the GET response has no capabilities). The helper reads the client version from `package.json`, the commit from `git rev-parse --short HEAD`, and writes `{commit, hostVersion, clientVersion, capabilities, windowWidth, zoom, timestamp, screenshot, notes}` as `<screenshot>.evidence.json` — one file per screenshot, so a matrix directory cannot overwrite earlier records.
-8. Restore zoom with `Cmd 0` and restore the window size by dragging.
+The helper reads the client version from `package.json` and the commit from
+`git rev-parse --short HEAD`. Record what the page actually returned; never edit
+the values to match the desired result. The 2.2 records under
+`评审证据/ui-2.2/` remain valid history and must not be reused as 2.4 evidence.
 
-The panel version line shows client + host. For the exact `capabilities`, open DevTools → Network → the `GET /api/group-talk-l` response (2.0.3 has no `capabilities` key; 2.2 returns `{inRoom, priority, control, delegate}`). Do not hand-edit values to match a desired result; the evidence file must reflect what the page actually returned.
+## History: live 2.2.0 results (2026-11-15)
 
-Do not edit `groups.json` to fabricate delegation rows for a screenshot: the audit view must reflect a real organizer run, otherwise the evidence is invalid. Do not use `osascript` to resize the window or click controls; the acceptance doc must be runnable without System Events permissions.
+Host restarted to 2.2.0; at 980×799:
 
+- ✅ Message rows no longer shrink to 1px under a long transcript (`flex: none`).
+- ✅ Long message expand/copy worked; Electron native clipboard copied the full
+  1104-character message.
+- ✅ Audit modal was read-only and showed no delegations yet.
+- ✅ Group list and member list could be collapsed and persisted.
+- ⚠️ 125%/150%/130% zoom was not captured: this Harness build did not change
+  page zoom from the keyboard; record what is actually captured.
+- Evidence lives in `评审证据/ui-2.2/` with per-image JSON (host/client 2.2.0,
+  980 px, commit af4e0d3).
 
-## Live 2.2.0 results (2026-11-15 00:15, UTC+8)
+## History: 2.3 delta
 
-Host restarted and loaded **Group-Talk-L 2.2.0** (panel version line). At 980×799:
-
-- ✅ Message rows no longer shrink to 1px under a long transcript. Root cause was
-  flexbox `flex-shrink` in the column list; `flex: none` on `.message`/`.member`
-  fixed it. Before the fix, 62 messages rendered as unreadable thin lines.
-- ✅ Long message (the 2.1 acceptance reply) shows `展开全文` / `复制全文`;
-  expanding shows the full text and `收起` / `复制全文`.
-- ✅ Page-head `审计` opens the read-only audit modal in-room; the delegation
-  section correctly says no delegations yet. (The duplicate audit button in the
-  group header was removed; the page-head one is the supported entry.)
-- ✅ Group list can be hidden completely; page head then offers `展开群列表`.
-  Member list has its own `收起参与者` control. Both choices persist in
-  localStorage across panel remounts (`group-talk-l:list-open` /
-  `group-talk-l:members-open`).
-- ⚠️ 125% / 150% / 130% zoom was **not** captured: `Cmd +`, `Cmd =` and
-  `Cmd + =` did not change this Harness build's page zoom; the app has no iOS-style
-  zoom menu. Do not claim those zoom states.
-- ✅ `复制全文` was verified live through the Electron native clipboard: the
-  clipboard text starts with `@A` and contains the full 1104-character Chinese
-  message, not the 600-character preview. The old fallback path is kept for
-  non-Electron hosts.
-- ✅ Evidence saved in `评审证据/ui-2.2/` with per-image
-  `<screenshot>.evidence.json` (host 2.2.0, client 2.2.0, 980×100, commit
-  af4e0d3). Zoom is recorded as 1.0 because that is what was actually captured.
-
-Screenshots: baseline, long-collapsed, long-expanded, audit modal, list-collapsed.
-The 2.2.0 host was live; `capabilities` contains priority/control/inRoom.
+`ambient` uses `queue`, `urgent` uses `steer`; audit is fetched on demand; the
+member count includes the human; `group_talk_list` lines are capped. These were
+verified by tests, not by a fresh live walk-through.

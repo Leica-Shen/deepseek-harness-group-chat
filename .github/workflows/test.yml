@@ -16,6 +16,13 @@ jobs:
         with:
           node-version: '22'
       - name: Syntax
-        run: for f in lib/*.js; do node --check "$f"; done
+        run: |
+          for f in lib/*.js bin/*.mjs scripts/*.mjs; do node --check "$f"; done
+      - name: Version is generated from package.json
+        run: node scripts/sync-version.mjs --check
       - name: Tests
         run: npm test
+      - name: Documentation numbers match the suite
+        run: node scripts/check-docs.mjs
+      - name: Package contents stay minimal
+        run: node -e "const p=require('./package.json'); if(p.files.includes('.github')||p.files.includes('REVIEW-RESPONSE.md')) process.exit(1); if(!p.peerDependencies) process.exit(1); console.log('package surface ok')"

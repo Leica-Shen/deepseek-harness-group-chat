@@ -1,3 +1,5 @@
+> **2.4.0 note (2026-11-17):** the external review of 2.3.1 is implemented in full; see `CHANGELOG.md` 2.4.0 and the new `COMPATIBILITY.md` / `ADAPTERS.md`. Highlights: one version source, relay with five red lines, credential scan + taint, broadcast preview, pause/emergency stop, retention/redaction, bilingual panel and host errors, adapter boundary + MCP, and a member-state schema v2 with migration. The panel's screenshots remain 2.2 evidence until a post-restart walk-through; the repository does not claim otherwise.
+>
 > **2.3.0 note (2026-11-15):** this document records the 2.0 review cycle. The 2.3 release closes the remaining P1s (human-only Web identity, service-level purpose gate, queue/steer priority, human target ledger, lossy-store refusal, note/audit bounds). See `CHANGELOG.md` 2.3.0 for the current behavior.
 
 # Response to the 2026-11-14 review
@@ -33,7 +35,7 @@ package's pure-Node CI.
 ## P2 — pending never converges
 
 `GroupService.ready()` now reconciles deliveries stranded by a process exit:
-pending rows older than `pendingTimeoutMs` (default 2 min) become `unknown`.
+pending rows older than `pendingTimeoutMs` (default 2 min) become `unknown` on the runtime maintenance pass (2.4; a restart alone no longer declares fresh rows unconfirmed).
 The UI shows `未确认` instead of `待确认` forever. Covered by
 `service.test.mjs` “stale pending deliveries reconcile to unknown on startup”.
 

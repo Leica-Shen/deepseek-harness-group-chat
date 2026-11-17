@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { createGroupCommand, parseGroupCommand } from '../lib/command.js'
-import { GroupStore } from '../lib/store.js'
+import { GroupError, GroupStore } from '../lib/store.js'
 import { GroupService } from '../lib/service.js'
 
 test('parses target shorthand and management forms', () => {
@@ -80,7 +80,7 @@ test('the command drives the same durable service as the panel', async () => {
     config: { historyLimit: 50, maxGroupsPerSession: 12, maxMembersPerGroup: 16, maxGroupsTotal: 100, deliveryMode: 'queue', sendCooldownMs: 0, dedupeWindowMs: 0 },
     log: () => {},
   })
-  const handler = createGroupCommand(service)
+  const handler = createGroupCommand(service, { lang: 'en' })
   const invoke = (rawInput) => handler({ agent: { id: 'session-a' }, rawInput })
 
   const created = await invoke(' new Review')
@@ -104,7 +104,7 @@ test('the command drives the same durable service as the panel', async () => {
   assert.match(left.text, /Left @bob/)
   const ownerLeave = await invoke(' leave')
   assert.equal(ownerLeave.kind, 'error')
-  assert.match(ownerLeave.text, /does not belong|not a member|dissolve/i)
+  assert.match(ownerLeave.text, /does not belong|not a member|dissolve|not found/i)
 
   const bad = await invoke(' delete')
   assert.equal(bad.kind, 'error')
@@ -114,4 +114,41 @@ test('the command drives the same durable service as the panel', async () => {
   assert.match(dissolved.text, /Dissolved group/)
   const deleted = await invoke(' delete confirm')
   assert.match(deleted.text, /Deleted group/)
+})
+
+test('the 2.4 command grammar parses pause, relay, topic, export and notes', () => {
+  assert.deepEqual(parseGroupCommand('pause'), { kind: 'pause', group: undefined })
+  assert.deepEqual(parseGroupCommand('pause *'), { kind: 'pause', group: '*' })
+  assert.deepEqual(parseGroupCommand('resume Review'), { kind: 'resume', group: 'Review' })
+  assert.deepEqual(parseGroupCommand('relay @bob Is Friday ok?'), { kind: 'relay', to: '@bob', message: 'Is Friday ok?' })
+  assert.deepEqual(parseGroupCommand('relay pause'), { kind: 'relayPause', paused: true })
+  assert.deepEqual(parseGroupCommand('relay resume'), { kind: 'relayPause', paused: false })
+  assert.deepEqual(parseGroupCommand('topic Ship on Friday'), { kind: 'topic', topic: 'Ship on Friday' })
+  assert.deepEqual(parseGroupCommand('export Review'), { kind: 'export', group: 'Review' })
+  assert.deepEqual(parseGroupCommand('decision We ship Friday'), { kind: 'note', noteKind: 'decision', text: 'We ship Friday' })
+  assert.deepEqual(parseGroupCommand('cleanup'), { kind: 'cleanup', group: undefined })
+  assert.deepEqual(parseGroupCommand('stats'), { kind: 'stats' })
+})
+
+test('command output is localized and structured failures keep their advice', async () => {
+  const calls = []
+  const service = {
+    ready: async () => {},
+    config: { allowRelay: true },
+    listFor: () => [],
+    statsFor: () => ({ groups: { active: [], total: 0 }, counters: { sends: 0, rejected: 0 }, estimatedTokens: 0, actualTokens: 0 }),
+    pauseHost: async (sessionId, paused) => { calls.push(['pauseHost', sessionId, paused]); return { paused } },
+    pauseGroup: async () => { calls.push(['pauseGroup']); return { name: 'Review' } },
+    resolveFor: () => { throw new GroupError('group-not-found', 'not found') },
+    delete: async () => { throw new GroupError('group-not-found', 'not found') },
+  }
+  const handler = createGroupCommand(service, { lang: 'zh' })
+  const empty = await handler({ rawInput: 'list' })
+  assert.match(empty.text, /还没有群聊/u)
+  const paused = await handler({ rawInput: 'pause *' })
+  assert.match(paused.text, /已暂停全部群聊/u)
+  assert.deepEqual(calls[0], ['pauseHost', 'human', true])
+  const missing = await handler({ rawInput: 'show Missing' })
+  assert.equal(missing.kind, 'error')
+  assert.match(missing.text, /找不到/u)
 })

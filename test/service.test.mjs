@@ -200,7 +200,8 @@ test('stale pending deliveries reconcile to unknown on startup', async () => {
   await service.send('session-a', { group: group.id, target: '@bob', message: 'was it delivered?' })
   await store.write((draft) => {
     const message = draft.groups[group.id].messages.at(-1)
-    message.at = 0
+    message.at = Date.now() - 5000
+    message.deliveries[0].at = Date.now() - 5000
     message.deliveries[0].status = 'pending'
   })
   const reloaded = new GroupService({
@@ -319,7 +320,7 @@ test('a legacy human alias still resolves @human and its own alias', async () =>
   assert.equal(viaHuman.deliveries[0].status, 'in-room')
 })
 
-test('a fast restart reconciles fresh pending rows too', async () => {
+test('a fast restart keeps fresh pending rows until the timeout, then expires them', async () => {
   const { service, store, ctx } = await harness()
   const group = await service.create('session-a', {
     name: 'Fast restart',
@@ -338,5 +339,21 @@ test('a fast restart reconciles fresh pending rows too', async () => {
     log: () => {},
   })
   await reloaded.ready()
-  assert.equal(reloaded.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'unknown')
+  // A restart alone no longer declares every in-flight row unconfirmed.
+  assert.equal(reloaded.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'pending')
+  // Once the row is older than the timeout, the runtime timer expires it.
+  await store.write((draft) => {
+    const message = draft.groups[group.id].messages.at(-1)
+    message.at = Date.now() - 5000
+    message.deliveries[0].at = Date.now() - 5000
+    message.deliveries[0].status = 'pending'
+  })
+  const expired = new GroupService({
+    store,
+    ctx,
+    config: { ...service.config, pendingTimeoutMs: 1000 },
+    log: () => {},
+  })
+  await expired.ready()
+  assert.equal(expired.listFor('session-a')[0].messages.at(-1).deliveries[0].status, 'unknown')
 })

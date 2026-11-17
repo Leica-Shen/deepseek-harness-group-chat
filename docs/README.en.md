@@ -7,6 +7,9 @@ Chinese is the primary product language; this page and [README.en.md](../README.
 - [SECURITY.md](../SECURITY.md) — threat model, budgets, injection boundaries, subagent delegation security (§9.5), test matrix.
 - [CHANGELOG.md](../CHANGELOG.md) — 2.0.x and 2.1.0 history.
 - [PLUGIN-ANATOMY.md](PLUGIN-ANATOMY.md) — how the Host/Client halves fit into a DSH plugin.
+- [COMPATIBILITY.md](../COMPATIBILITY.md) — eight-host matrix, what degrades and how it is labelled.
+- [ADAPTERS.md](../ADAPTERS.md) — the adapter contract and mailbox mode.
+- [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) — the 2.4 post-restart acceptance matrix.
 
 ## Core ideas
 
@@ -16,5 +19,3 @@ Chinese is the primary product language; this page and [README.en.md](../README.
 4. Every send is checked and charged by the same guard: fan-out, cooldown, dedupe, burst and daily message/delivery/token budgets.
 5. Secretary and Organizer are duty labels. The Host enforces `group_talk_note` (secretary/organizer) and `group_talk_delegate` (organizer/owner, opt-in, audited).
 6. A delegated subagent is not a group member, gets no group tools, cannot delegate further, has a timeout and quota, and leaves audited control rows.
-
-- [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) — post-restart screenshot matrix and overlap/focus/copy checklist.

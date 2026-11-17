@@ -69,7 +69,7 @@ test('persists and reloads a group atomically', async () => {
     draft.groups.grp_a = group('grp_a')
   })
   const disk = JSON.parse(await readFile(file, 'utf8'))
-  assert.equal(disk.version, 1)
+  assert.equal(disk.version, 2)
   assert.equal(disk.groups.grp_a.name, 'Review')
 
   const reloaded = new GroupStore({ file, historyLimit: 20 })

@@ -164,3 +164,74 @@ test('an unusable store fails closed instead of showing an empty panel', async (
   assert.equal(created.status, 503)
   dispose()
 })
+
+test('GET is conditional (ETag), bounded by limit, and no longer ships the whole help text every poll', async () => {
+  const { route, dispose } = await mount()
+  const created = await post(route, { action: 'create', name: 'Paged', members: [{ sessionId: 'session-b', alias: 'bob' }] })
+  const groupId = (await created.json()).group.id
+  for (let index = 0; index < 3; index += 1) {
+    await post(route, { action: 'send', group: groupId, target: '@bob', message: `message ${index}` })
+  }
+  const first = await route.fetch(new Request('http://localhost/api/group-talk-l?sessionId=human&limit=2'))
+  assert.equal(first.status, 200)
+  const body = await first.json()
+  assert.equal(body.help, undefined)
+  assert.ok(body.gate && typeof body.gate.paused === 'boolean')
+  assert.ok(Array.isArray(body.relays))
+  assert.equal(body.groups[0].messagesShown, 2)
+  assert.equal(body.groups[0].messageTotal, 4)
+  assert.equal(body.groups[0].hasOlder, true)
+  const etag = first.headers.get('etag')
+  assert.ok(etag)
+  const second = await route.fetch(new Request('http://localhost/api/group-talk-l?sessionId=human&limit=2', {
+    headers: { 'if-none-match': etag },
+  }))
+  assert.equal(second.status, 304)
+  dispose()
+})
+
+test('a cross-site POST without the panel header is refused before it can mutate state', async () => {
+  const { route, dispose } = await mount()
+  const response = await post(route, { action: 'create', name: 'CSRF' }, { origin: 'http://localhost' })
+  assert.equal(response.status, 403)
+  const ok = await post(route, { action: 'create', name: 'CSRF' }, { origin: 'http://localhost', 'x-group-talk-l': '1' })
+  assert.equal(ok.status, 200)
+  dispose()
+})
+
+test('HTTP actions cover pause, relay, export, topic and localized errors', async () => {
+  const { route, dispose } = await mount()
+  const created = await post(route, { action: 'create', name: 'Ops', members: [{ sessionId: 'session-b', alias: 'bob' }] })
+  const group = (await created.json()).group
+  const paused = await post(route, { action: 'pause', group: group.id })
+  assert.equal((await paused.json()).group.paused, true)
+  const held = await post(route, { action: 'send', group: group.id, target: '@bob', message: 'held', broadcast: false })
+  assert.equal((await held.json()).held, true)
+  const resumed = await post(route, { action: 'resume', group: group.id })
+  assert.equal((await resumed.json()).group.paused, false)
+
+  const topic = await post(route, { action: 'setTopic', group: group.id, topic: 'Ship on Friday' })
+  assert.equal((await topic.json()).group.topic, 'Ship on Friday')
+
+  const relay = await post(route, { action: 'relay', to: '@bob', intent: 'confirm', message: 'Confirm the date?' })
+  assert.equal((await relay.json()).relay.status, 'delivered')
+
+  const exported = await post(route, { action: 'export', group: group.id })
+  const markdown = (await exported.json()).text
+  assert.match(markdown, /# Ops/u)
+  assert.match(markdown, /Confirm the date\?/u)
+
+  const localized = await post(route, { action: 'send', group: 'missing-group', target: '@bob', message: 'hi', lang: 'zh' })
+  assert.equal(localized.status, 404)
+  const failure = await localized.json()
+  assert.equal(failure.error.code, 'group-not-found')
+  assert.match(failure.error.message, /找不到/u)
+  assert.ok(failure.error.messageEn)
+
+  const preview = await post(route, { action: 'preview', group: group.id, target: '*', message: 'broadcast' })
+  const previewBody = await preview.json()
+  assert.equal(previewBody.target, '*')
+  assert.ok(previewBody.recipients.length >= 1)
+  assert.ok(Number.isFinite(previewBody.estimatedTokens))
+  dispose()
+})

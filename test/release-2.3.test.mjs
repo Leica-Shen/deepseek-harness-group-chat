@@ -120,8 +120,8 @@ test('the purpose gate is enforced by the domain service, exact-role and target 
   assert.equal(organizer.deliveries[0].status, 'delivered')
 })
 
-test('human messages skip target budgets but keep the sender cooldown and peer budgets intact', async () => {
-  const { service, store, advance } = await harness({ sendCooldownMs: 1000, dailyDeliveriesPerTarget: 1 })
+test('human messages skip target budgets and use their own cooldown while peer budgets stay intact', async () => {
+  const { service, store, advance } = await harness({ sendCooldownMs: 1000, humanCooldownMs: 1000, dailyDeliveriesPerTarget: 1 })
   const group = await service.create('human', { name: 'Human priority', members: MEMBERS })
   await service.send('human', { group: group.id, target: '@bob', message: 'one' })
   await assert.rejects(

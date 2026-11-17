@@ -298,3 +298,87 @@ interface Delivery {
 4. 附件：复用 `ctx.attachments` 或仅允许文件路径引用；需要权限和 prompt 预算。
 5. 实时：在 Connection 上注册 stream，替代 8 秒轮询。
 6. 角色目录：把自由文本角色改为可配置预设，但底层仍存字符串，迁移简单。
+
+## 10. 2.4 架构增量
+
+### 10.1 适配器边界（S24）
+
+2.4 之前 `service.js` 直接 `ctx.get('sessionController')` / `ctx.get('subagents')`。现在这两处收敛到 `lib/adapters.js`：
+
+```text
+GroupService
+   ├─ store / guard / policy / relay / secrets / metrics   （无宿主依赖）
+   └─ adapter
+        ├─ capabilities()            wake / steer / listSessions / subagents / mailbox
+        ├─ listSessions(signal)      可见普通会话
+        ├─ prompt({requestId, sessionId, mode, text, signal})
+        └─ startSubagent(...)        可选
+```
+
+`createDshAdapter(ctx)` 是参考实现；`createMailboxAdapter({dir})` 把信封写成文件，明确标“收件箱模式”，不假装唤醒。`bin/mcp-server.mjs` 用同一个 service 与 mailbox 适配器暴露 MCP 工具，供 Codex/Claude Code 等宿主复用。能力声明进入 HTTP `capabilities` 与设置页，面板据此显示降级状态（S28）。
+
+### 10.2 传话筒状态机（S23）
+
+```text
+created ──prompt accepted──▶ delivered ──reply──▶ replied
+   │                            │
+   ├──TTL/维护定时器──────────▶ timeout
+   └──群里删除/取消────────────▶ cancelled
+```
+
+- 记录在 `state.relays`，不进入任何群 transcript；回复经由 `prompt` 原路回到发起会话。
+- 轮次：`maxRounds` 默认 1、上限 3，且按 intent 再夹一层（confirm 2 / ask 3 / handoff 1）。接收方 `followup: true` 时 Host 自动放行下一轮。
+- 五条红线在 `relay.js` 与 `service.relay()` 硬编码：禁止链式、只许 confirm/ask/handoff、拒收祈使/授权类文本、禁止凭据、面板可见且可暂停。
+- 预算：计入 sender/Host 日账本与并发闸；`relayPairPerHour` 限制同一对会话；同会话最多 2 个 open relay。
+- 超时用真实定时器（15s 维护 pass），并给 agent 发起方投递一条结构化结束信封；人类发起方只在面板显示。
+
+### 10.3 信息流与凭据（S6/S8）
+
+- 每条消息带 `taint`：`human-typed | human-pasted | peer | tool`；信封把粘贴内容明确标为 untrusted，把人类亲写内容标为 operator instruction。
+- 发送前 `scanSecrets`：私钥头、AWS/GitHub/Slack/Google/Stripe/provider key、JWT、bearer、key assignment、高熵串。模型工具永不覆盖；人类面板可一次确认。
+- 导出走 `redactForExport`：凭据、`/Users/...`、邮箱替换为占位符。
+
+### 10.4 暂停、并发与熔断（S10–S12）
+
+- `state.gate.paused`（全站）与 `group.paused`（单群）：暂停期 `send` 正常写入消息，但投递行是 `held`，不调用 `prompt`，也不计投递/Token 预算（消息条数与冷却仍计）。
+- `maxConcurrentDeliveries` + `deliveryQueueLimit`：`#withDeliverySlot` 是唯一的 `prompt` 入口，超队列返回可重试的结构化拒绝。
+- 广播（`*`/多收件人）先 `preview`：收件人、会话数、估算 tokens；人类确认后 `broadcast: true` 才可超过单条 fan-out 上限，并受 `maxBroadcastRecipients` 与每日广播额度约束。
+
+### 10.5 数据模型 v2
+
+```text
+state
+├─ version: 2
+├─ groups[id] { …v1 字段,
+│    sensitivity: public|internal|secret,
+│    paused?: true,
+│    breaker?: {windowStart, broadcasts},
+│    members[] { …, roleId, organizer? },
+│    messages[] { …, taint?, refs?, actualTokens?, redacted?,
+│                    deliveries[] { status: pending|delivered|read|failed|unknown|in-room|held|queued,
+│                                   at, readAt?, actualTokens? } } }
+├─ relays[id] { from/to, intent, status, round, maxRounds, expiresAt, messages[] }
+├─ gate { paused, pausedAt, pausedBy, reason, relayPaused }
+└─ usage { day(local), senders, groups, targets, broadcasts, lastSend, actualTokens }
+```
+
+迁移：`normalizeState` 对 v1 文档补齐字段，丢弃无法解析的 relay；成员 `roleId` 由旧标签推断。日账本 day key 从 UTC 改为本地日后，升级会有一次重置。
+
+### 10.6 读回执
+
+“已读”不是额外工具：当某会话在群里发言时，Host 把它此前 `delivered` 的投递行标为 `read` 并记 `readAt`。这证明它回到了群里，不证明它读懂了内容；需要明确确认时用 relay。该语义写进 SECURITY，避免“已读=同意”的错误推断。
+
+### 10.7 前端状态与版本
+
+- 面板不再自动“保持打开”；只有用户显式 pin 才会在会话切换时回到群面板，避免抢焦点。
+- 版本由 `scripts/sync-version.mjs` 从 `package.json` 生成；面板只在 Host/面板不一致时显示两个版本。
+- 面板语言三态（跟随/中文/English），API 带 `lang`；`roleId` 让 `#角色` 在语言切换后仍可路由。
+- 列表、消息、成员都按“最近窗口 + 更早”分页；GET 带 ETag，未变化返回 304，减少 8 秒轮询的重复渲染。
+
+### 10.8 测试策略增量
+
+- `relay.test.mjs`：闭环、越权回复、链式、祈使/授权、凭据、轮次、超时通知、暂停、配对限速。
+- `security-3.test.mjs`：扫描/确认、粘贴 taint、广播、暂停、读回执、secret 群、并发闸、保留期、redact、人类去重。
+- `store-2.4.test.mjs`：schema 2、advisory lock、保留期、redact、活跃群上限、歧义候选。
+- `version-i18n.test.mjs` / `client-2.4.test.mjs`：单一版本源、双语键一致、roleId 显示。
+- `http.test.mjs` 扩展：ETag/304、分页、CSRF header、pause/relay/export/preview、双语错误。

@@ -1,21 +1,23 @@
 # group-talk-l bundle patch: one Host row and its Web client half.
 #
-# Every field is optional; the defaults below are the documented values. The
-# store lives under $DSH_HOME, never inside a workspace. The limits are
-# deliberately conservative because one message can wake several model turns.
+# Every field is optional; the values below are the documented defaults. The
+# store lives under $DSH_HOME, never inside a workspace. Limits are deliberately
+# conservative because one message can wake several model turns.
 - insert:
     - id: group-talk-l
-      name: '@local/group-talk-l'
+      name: '@leica-shen/dsh-group-chat'
       config:
         enabled: true
         # Human-in-the-loop management: model tools cannot create/add/remove by default.
         allowAgentCreate: false
         allowAgentManage: false
         # Audited subagent delegation (organizer/owner only); off by default.
+        # When enabled, children get no group tools and (with delegationReadOnly)
+        # lose mutating/network tools.
         allowAgentDelegate: false
-        # Secretary/organizer audited notes; low risk, on by default.
+        delegationReadOnly: true
+        # Secretary/organizer audited notes and decisions; low risk, on by default.
         allowAgentNote: true
-        # Per-agent note limits; notes share the audit log, not the chat buffer.
         maxNotesPerAgentPerMinute: 10
         maxNotesPerAgentPerDay: 50
         # Empty = first registered subagent provider.
@@ -24,34 +26,45 @@
         maxDelegationsPerDay: 3
         maxDelegationChars: 6000
         # Human messages bypass target caps/burst; group/global/sender budgets
-        # and the sender cooldown still apply.
+        # still apply. A human keeps their own cooldown, which defaults to 0:
+        # the panel already renders a busy state, and a person typing two
+        # messages in a row is not a retry loop.
         humanBypassTargetCaps: true
         # Empty resolves $DSH_HOME/group-talk-l/groups.json.
         dataFile: ''
+        # Advisory lock file next to the JSON store (single-process guarantee).
+        lockFile: true
         # Bounded transcript: oldest entries are trimmed after each send.
         historyLimit: 100
         # Per-session active-group ceiling (prompt/tool overhead).
         maxGroupsPerSession: 5
-        # Host-wide record ceiling, including dissolved groups.
+        # Host-wide ACTIVE-room ceiling; dissolved history does not consume it.
         maxGroupsTotal: 32
-        # Owner included.
+        # Owner (the person) included.
         maxMembersPerGroup: 16
         # Recent transcript lines injected into each member's prompt section.
-        policyRecentMessages: 0
+        policyRecentMessages: 3
         # Hard ceiling for the whole Group-Talk-L prompt section.
         policyMaxChars: 3500
+        # auto = full prose for 1–3 groups, one line per room beyond that.
+        policyCompact: auto
         # Ambient delivery (the default priority). queue waits for the target's
         # current turn to finish; steer is the advanced interject override.
         # Urgent messages always use steer unless a caller passes mode explicitly.
         deliveryMode: queue
-        # Per-message body cap.
+        # Per-message body cap (stored legacy rows may be up to 8000).
         maxMessageChars: 2000
         # One send may resolve to at most this many recipients.
         maxRecipientsPerSend: 6
-        # Per-sender cooldown across all groups.
+        # A human-confirmed broadcast may go wider than maxRecipientsPerSend.
+        maxBroadcastRecipients: 16
+        # Per-sender cooldown across all groups (agents).
         sendCooldownMs: 3000
+        # The person is exempt by default; raise this to throttle a stuck panel.
+        humanCooldownMs: 0
         # Identical sender/target/body inside this window is not delivered again.
-        dedupeWindowMs: 30000
+        # The human panel is always exempt.
+        dedupeWindowMs: 8000
         # Sliding-window burst guards (per sender/group/Host/target, estimated tokens).
         burstWindowMs: 60000
         maxMessagesPerSenderPerBurst: 8
@@ -61,25 +74,50 @@
         maxEstimatedTokensPerSenderPerBurst: 12000
         maxEstimatedTokensPerGroupPerBurst: 24000
         maxEstimatedTokensPerHostPerBurst: 60000
-        # Daily, UTC-reset budgets. @human is exempt from the per-sender
-        # delivery/token ceilings (group/Host ceilings still apply); the human
-        # message count and cooldown remain.
+        # Daily budgets reset at LOCAL midnight. @human is exempt from the
+        # per-sender delivery/token ceilings (group/Host ceilings still apply);
+        # the human message count and cooldown remain.
         dailyMessagesPerHost: 300
         dailyDeliveriesPerHost: 500
         dailyEstimatedTokensPerHost: 300000
         dailyMessagesPerSender: 30
+        dailyMessagesPerHuman: 120
         dailyDeliveriesPerSender: 60
         dailyMessagesPerGroup: 60
         dailyDeliveriesPerGroup: 120
         dailyDeliveriesPerTarget: 40
-        # Lower-bound estimated prompt allowance; not a billing statement.
+        dailyBroadcastsPerSender: 6
+        # Circuit breaker: more room-wide sends than this in an hour pause the room.
+        maxBroadcastsPerGroupPerHour: 12
         dailyEstimatedTokensPerSender: 60000
         dailyEstimatedTokensPerGroup: 120000
         dailyEstimatedTokensPerTarget: 30000
         assumedTokensPerDelivery: 800
+        # Concurrent prompts across the Host (S10) and the waiting queue bound.
+        maxConcurrentDeliveries: 2
+        deliveryQueueLimit: 32
+        # Retention (S16): chat rows older than this are trimmed; audit rows stay.
+        # 0 keeps everything.
+        retentionDays: 30
+        # Point-to-point relay (S23): one bounded question, 10-minute TTL.
+        allowRelay: true
+        relayTtlMs: 600000
+        relayPairPerHour: 6
+        # Credential scan (S8). A person can confirm once in the panel; a model
+        # tool can never override it.
+        secretScan: true
+        # public | internal | secret; secret rooms are panel-only.
+        defaultSensitivity: internal
+        # all = every member reads the whole transcript; own = addressed/sent rows only.
+        memberHistoryScope: all
+        # Pending deliveries become "unconfirmed" after this (real timer, not startup-only).
+        pendingTimeoutMs: 120000
+        replyNudgeAfterMs: 120000
         # Model-facing history and Web panel bounds.
         maxHistoryToolChars: 12000
         maxReadsPerAgentPerMinute: 20
-        replyNudgeAfterMs: 120000
-        pendingTimeoutMs: 120000
         uiMessageLimit: 20
+        # /group output language: en | zh. The Web panel follows the host locale
+        # and has its own three-state switch.
+        # en | zh; Chinese is the default for the Chinese-first product.
+        commandLang: zh

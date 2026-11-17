@@ -1,8 +1,8 @@
 {
-  "name": "@local/group-talk-l",
-  "version": "2.3.1",
+  "name": "@leica-shen/dsh-group-chat",
+  "version": "2.4.0",
   "type": "module",
-  "description": "群聊 Group-Chat (Group-Talk-L): a full-area cross-session group chat for DeepSeek Harness. The person talks to existing sessions through @alias, #role or * routing, with role assignment, human-priority delivery, audited secretary/organizer notes, bounded subagent delegation, dedupe, fan-out caps and daily token budgets. Each session keeps its own context, model and workspace.",
+  "description": "群聊 Group-Chat (Group-Talk-L): a full-area cross-session group chat for DeepSeek Harness. The person talks to existing sessions through @alias, #role or * routing, with role grants, human priority, audited notes and decisions, bounded subagent delegation, one-to-one relay, credential scanning, pause/emergency-stop, per-group sensitivity, dedupe, fan-out caps and daily token budgets. Each session keeps its own context, model and workspace.",
   "icon": "./icon.svg",
   "main": "lib/index.js",
   "exports": {
@@ -12,6 +12,7 @@
   },
   "files": [
     "lib",
+    "bin",
     "cordis.patch.yml",
     "icon.svg",
     "assets/icon-180.png",
@@ -19,12 +20,13 @@
     "README.en.md",
     "DESIGN.md",
     "SECURITY.md",
+    "COMPATIBILITY.md",
+    "ADAPTERS.md",
     "LICENSE",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "docs",
-    ".github",
-    "REVIEW-RESPONSE.md",
+    "!docs/screenshots",
     "screenshots.json"
   ],
   "keywords": [
@@ -56,8 +58,11 @@
   "license": "MIT",
   "author": "Group-Talk-L contributors",
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "check": "for f in lib/*.js; do node --check \"$f\"; done"
+    "test": "node scripts/sync-version.mjs --check && node --test test/*.test.mjs",
+    "check": "for f in lib/*.js; do node --check \"$f\"; done",
+    "sync:version": "node scripts/sync-version.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
+    "mcp": "node bin/mcp-server.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -69,5 +74,32 @@
   "homepage": "https://github.com/Leica-Shen/deepseek-harness-group-chat#readme",
   "bugs": {
     "url": "https://github.com/Leica-Shen/deepseek-harness-group-chat/issues"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-api-session-controller": "*",
+    "@deepseek-ai/dsh-client-locale": "*",
+    "@deepseek-ai/dsh-client-ui-conversation": "*",
+    "@deepseek-ai/dsh-client-ui-primitives": "*",
+    "@deepseek-ai/dsh-client-ui-workspace": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-api-session-controller": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-conversation": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-primitives": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-workspace": {
+      "optional": true
+    }
+  },
+  "bin": {
+    "group-chat-mcp": "bin/mcp-server.mjs"
   }
 }

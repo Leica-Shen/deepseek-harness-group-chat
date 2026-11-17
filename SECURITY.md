@@ -2,7 +2,7 @@
 
 > 版本：2.3.1 · 范围：跨会话消息、目标会话唤醒、prompt 注入、Web 面板与人类身份、持久化账本与 lossy 载入、人类优先、笔记/审计、子代理委派、发送门槛、ambient/urgent 投递。
 >
-> 结论：2.3.0 关闭了 2.2 评审中的 P1：Web 不再信任 body 里的 `sessionId`、purpose 门槛下沉到域服务、人类消息不再消耗 target 日账本、`ambient` 真正使用 `queue`、lossy store 拒绝写入。残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入**、**已安装插件/同源脚本的信任域** 和 **同 Host 多进程竞争**。未发现必须阻止上线的风险，但不能承诺零风险。
+> 结论：2.4.0 在 2.3 的边界修复之上，补齐了审查报告的安全/成本项：凭据扫描与 taint 标签、广播预演与人工确认、并发闸/熔断/急停、群级敏感度、保留期与脱敏导出、结构化拒绝、真实用量回流、点对点传话筒的五条红线，以及可选的单进程锁。残余风险主要是 **估算 Token 与真实账单的偏差**、**peer content 提示注入**、**“已读”只是推导值**、**已安装插件/同源脚本的信任域** 和 **同名群/多进程的运维边界**。未发现必须阻止上线的风险，但不能承诺零风险。
 
 ## 1. 调查目标
 
@@ -99,7 +99,7 @@ Group-Talk-L 的每个群消息都可能：
 | 估算 Token/群 | 120,000 | 实验上限 2,500、每次投递 1,000：一次 2 目标消息约 2,100，第二次被拒绝 |
 | 估算 Token/目标 | 30,000 | 防止单个目标被多群围猎 |
 
-账本存于 `groups.json` 的 `usage`，**Host 重启后继续生效**，按 UTC 日期重置。测试验证了 sender/group/target 三个计数器在重新加载后保持不变。
+账本存于 `groups.json` 的 `usage`，**Host 重启后继续生效**，按 **本地日历日** 重置（2.4 起；2.3 及以前按 UTC，升级后会有一次重置）。测试验证了 sender/group/target 三个计数器在重新加载后保持不变。
 
 ### 4.5 prompt 体积
 
@@ -164,11 +164,29 @@ Group-Talk-L 的每个群消息都可能：
 | lossy 载入静默丢数据 | 继续用残缺 state，下次写覆盖 | 标为只读；HTTP 503；保留原文件 |
 | 重复挂载 | 两个 store 互相覆盖 | 同一 `dataFile` 只允许一个实例 |
 
+### 4.11 2.4.0 的新增控制
+
+| 问题 | 2.3 行为 | 2.4 控制 |
+| --- | --- | --- |
+| 凭据粘贴进群 | 无扫描 | 私钥/AWS/GitHub/Slack/Google/Stripe/provider/JWT/高熵串拦截；人类可确认一次，模型不能 |
+| 广播成本不可见 | 只有 fan-out 上限 | `preview` 返回收件人与估算 token；人类确认后才允许超过单条 fan-out，且受每日广播额度约束 |
+| 并发唤醒过多 | 只有消息条数口径 | `maxConcurrentDeliveries` + 队列上限；超限结构化拒绝 |
+| 事故止血 | 改 YAML + 重启 | `/group pause [群|*]`、面板暂停；暂停期只记录不唤醒；`/group relay pause` |
+| 拒绝不可行动 | 英文句子 | `{code, retryAfterMs, suggestion}`；面板与命令本地化 |
+| 委派能力过宽 | 禁群工具 | `delegationReadOnly` 额外禁用写/网络类工具 |
+| 群级别隐私 | 无 | `public/internal/secret`；secret 群仅面板可发、禁止模型建群/委派 |
+| 记录永久留存 | `historyLimit` 只裁剪 | `retentionDays`（默认 30，审计事实保留）；单条 redact；导出脱敏 |
+| 跨会话传话 | 人类复制粘贴 | relay：默认 1 轮、TTL、禁止链式/授权/祈使句/凭据、可暂停、面板可见 |
+| 多进程写同一文件 | 仅进程内队列 | 可选 advisory lock；活进程占用则只读 |
+
 ### 4.11 2.3.0 的残余信任边界
 
 - Web 路由的认证主体是“操作者的浏览器”，不是“某个会话”；因此同源脚本仍能以人类身份发消息。这不是插件能单独解决的沙箱问题，市场文案与 SECURITY 应明确“已安装插件/同源脚本同属信任域”。
 - 群元数据（名称、角色、职责、主题）仍会进入成员的 system prompt；`interpolate: false` 只阻止 `{{}}` 插值，不阻止语义注入。默认 `allowAgentCreate/Manage=false` 时只有人类能设置这些字段。
-- 子代理委派的真实 provider 路径尚未在 2.3 中实跑；默认关闭，市场描述应标实验性。
+- 子代理委派的真实 provider 路径尚未在 2.4 中实跑；默认关闭，市场描述应标实验性。
+- “已读”是推导值：目标后来在群里发言即视为读过此前的投递；它不是强一致回执，也不证明模型真的理解了内容。需要明确确认时用 relay。
+- relay 的“禁止自动外发”是协议约束：接收方仍可能在自己的会话里使用它原本拥有的工具；插件不能也不应剥夺宿主工具。
+- `secretScan` 是启发式：命中的是高信号形态，不能保证覆盖所有凭据；未命中的粘贴内容仍按不可信处理。
 
 ## 5. 防护映射
 
@@ -191,6 +209,11 @@ Group-Talk-L 的每个群消息都可能：
 | 笔记刷屏/审计膨胀 | 10/分、50/天；control 独立窗口；audit 按需 | `rate-limited`/`quota-exceeded`；GET 不含 audit |
 | lossy store 覆盖原文件 | 载入即只读；HTTP 503 | 人工修复/移走文件 |
 | 中文 Token 低估 | CJK-aware 估算 | 预算更早触发；仍不是账单 |
+| 凭据进群 | 2.4：secret 扫描 + 人工确认 | `secret-detected`，0 投递 |
+| 广播成本失控 | 2.4：preview + 确认 + 广播额度 + 并发闸 | 超限拒绝/排队，不静默放大 |
+| 事故止血 | 2.4：群/全站暂停 | 暂停期只记录不唤醒 |
+| 记录无限留存 | 2.4：保留期 + redact | 到期裁剪聊天行；单条可脱敏 |
+| 链式传话 | 2.4：relay 红线 | `relay-loop`，0 投递 |
 
 ## 6. 残余风险
 
@@ -201,18 +224,21 @@ Group-Talk-L 的每个群消息都可能：
    envelope 和 prompt 已明确群消息是 untrusted peer content，但模型仍可能被复杂文本影响。插件不做内容审核，也不会自动执行群消息中的工具调用；目标模型仍以正常 agent 规则运行。
 
 3. **同 Host 多进程**  
-   `GroupStore` 只有进程内写队列；两个 Host 进程写同一个 `dataFile` 可能互相覆盖。当前部署默认单 Host；不要把 `dataFile` 指向共享网络盘。
+   2.4 的 `lockFile` 只是 advisory lock：第二个 live 进程会变成只读并返回 `store-locked`，但它不做分布式协调，也不能阻止外部脚本直接改文件。不要把 `dataFile` 指向共享网络盘。
 
 4. **失败投递已记账**  
    投递失败也消耗了尝试成本，账本不退款。这避免“故意失败刷配额”，但可能让发送者在临时故障后提前撞上限。
 
 5. **跨时区**  
-   每日账本按 UTC 重置。对 UTC+8 用户，重置发生在本地 08:00；这是为了确定性和跨进程一致。
+   每日账本按 Host 所在时区的本地零点重置（2.4 起）。跨时区团队看到的是 Host 时区的“今天”，面板文案已明确“本地”；这是为了让“今日已发”与人的直觉一致，代价是不同时区的成员共享同一个边界。
 
 6. **插件信任域**
    已安装的 Host 插件可以用 Node 文件 API 直接读写 `groups.json`；同源 Client 脚本可以调用 Web 路由。0600、`allowAgentManage` 和 purpose 门槛防的是协议内越权，不是恶意插件沙箱。市场安装第三方插件时，这应是明示前提。
 
-7. **插件信任域与 lossy store**
+7. **“已读”与传话的语义边界**
+   面板的“已读”是推导值（目标后来在群里发过言），不是逐条回执；relay 是显式回执，但默认 1 轮、10 分钟，且不能成为授权、付款或删除的依据。把这两者混用，会产生“它已读了所以它同意了”的错误推断。
+
+8. **插件信任域与 lossy store**
    载入时丢失成员/群会让 store 只读并返回 503；这是防止覆盖的保护，但也意味着需要人工修复文件后才能继续写入。不要把 `groups.json` 交给会改写 schema 的外部工具。
 
 8. **委派尚未真实 provider 验收**
@@ -242,7 +268,7 @@ Group-Talk-L 的每个群消息都可能：
 
 ## 8. 测试矩阵
 
-当前 102 个测试：
+当前 151 个测试：
 
 | 文件 | 覆盖 |
 | --- | --- |
@@ -260,11 +286,17 @@ Group-Talk-L 的每个群消息都可能：
 | `release-2.3.test.mjs` | queue/steer、service 级 purpose、精确角色、target 账本、CJK 估算、笔记配额、audit 按需、list 上限、lossy store、8,000 字上限 |
 | `host.test.mjs` | Host 挂载、scoped 安装/卸载、sent-gate 豁免、重复挂载忽略 |
 | `config.test.mjs` | 默认值、queue/steer、burst/host 限值与非法值回退 |
+| `relay.test.mjs` | 传话闭环、超时、轮次、红线、配对限速、暂停、可见性 |
+| `security-3.test.mjs` | 凭据扫描/确认、粘贴 taint、广播确认、暂停/急停、读回执、secret 群、并发闸、保留期、redact、人类去重 |
+| `store-2.4.test.mjs` | schema 2、advisory lock、保留期、redact、活跃群上限、歧义候选 |
+| `version-i18n.test.mjs` | 单一版本源、双语目录、结构化错误与建议 |
+| `client-2.4.test.mjs` | 双语键一致、roleId 显示、单版本契约 |
+| `http.test.mjs`（扩展） | ETag/304、分页、CSRF header、pause/relay/export/preview、双语错误 |
 
 正式启用前检查：
 
-- [x] `node --test test/*.test.mjs`：102/102 通过；
-- [x] `test/security.test.mjs`：目标/发送者/群/Host 突发、Host 日预算、并发竞态、envelope 无 session id、数据文件权限 0600/目录 0700；
+- [x] `npm test`：151/151 通过（含版本一致性检查）；
+- [x] `test/security.test.mjs` 与 `security-3.test.mjs`：突发/日预算/并发竞态、envelope 无 session id、0600/0700、凭据与 taint、广播确认、暂停、读回执、secret 群；
 - [x] `node --check` 全部 Host/Client 文件；
 - [x] Host row `active`；认证 HTTP `GET /api/group-talk-l` 返回 200；
 - [x] Client slot `conversation.session.header.actions` 已注册；
@@ -321,12 +353,12 @@ Group-Talk-L 的每个群消息都可能：
 
 ### 剩余风险 / 待重启项
 
-- 当前 live Host 为 2.0.3（群面板版本实测）；源码与测试（本地 `v2.1.0`）新增人类优先、秘书/组织者、委派与审计。**下一次 Harness 重启后加载 2.1 Host**；2.1 的子代理委派需要真实 provider 再验收一次。
+- 面板版本由“单一版本源”生成并只在 Host/面板不一致时提示；**下一次 Harness 重启后才会加载 2.4 Host 半**。2.4 的视觉重走查与真实子代理 provider 仍需在重启后补做。
 - `computer-use` 在热重载期间仍报 duplicate service；这是独立插件的非幂等注册问题，重启后确认；
 - 群聊入口是原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；仅会话内徽标仍是 DOM 装饰，上游改版时可能安全消失；
 - 其余残余风险见第 6 节。
 
-当前结论：**2.3.0 的 HTTP human-only、purpose 域门禁、queue/steer、笔记配额、lossy store 读保护与重复挂载均有自动化测试；2.2.0 的整屏 panel、折叠、长消息和审计 modal 仍是最近一次实机 UI 证据。源码 2.3.0 需要重启 Harness 才会成为 live Host；真实子代理 provider 仍需由 organizer 实跑一次。**
+当前结论：**2.4.0 的版本纪律、凭据扫描/taint、广播确认、暂停/急停、并发闸、secret 群、保留期/redact、读回执、传话筒全链路、双语与 ETag/CSRF 均有自动化测试；`docs/screenshots/*.jpg` 仍是 2.2 时代的 1200×777 实机证据，只能作布局参考。源码 2.4.0 需要重启 Harness 才会成为 live Host；真实子代理 provider 仍需由 organizer 实跑一次。**
 ## 9.5 子代理委派安全（2.1）
 
 委派把“一个群消息”升级成“一个可以调用工具的子 Agent”，因此按高风险能力处理。

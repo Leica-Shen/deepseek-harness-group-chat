@@ -501,7 +501,7 @@ test('long messages expose expand/copy controls and priority is visible', () => 
   assert.ok(strings.includes('expandMessage'))
   assert.ok(strings.includes('copyFull'))
   assert.ok(strings.some((value) => value.includes('hideGroupList')))
-  assert.ok(strings.some((value) => value.includes('collapseMembers')))
+  assert.ok(strings.some((value) => value.includes('expandMembers')))
 })
 
 

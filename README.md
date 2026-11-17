@@ -1,12 +1,89 @@
 # 群聊 Group-Chat · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **102 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **151 tests** · DeepSeek Harness Host + Web Client plugin
 
 把 **已经开着的 AI 会话** 拉进一个群，像同事协作一样分工、对话、互相复核。每个会话保留自己的上下文、模型和工作区，**不合并上下文，也不打断正在跑的任务**。
 
 通过 `@别名`、`#角色` 或 `*` 发消息：`@设计师` 找具体成员，`#研究员` 按角色群发，`*` 通知全群。你以「你」（`@human`）的身份直接说话，不需要借某个会话的名义。
 
-群聊 Group-Chat（包名 `@local/group-talk-l`）是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控：fan-out 上限、发送冷却、去重、每日 Token 预算、群数量上限都默认开启，群记录只保存在本机。
+群聊 Group-Chat（npm 包名 `@leica-shen/dsh-group-chat`，插件 id 仍为 `group-talk-l`）是 DeepSeek Harness 的 **Host + Web Client** 插件，重点不是“再加一个群聊功能”，而是让跨会话通信在面对信息洪水、Token 放大、重复投递和群膨胀时仍然可控：fan-out 上限、发送冷却、去重、每日 Token 预算、群数量上限都默认开启，群记录只保存在本机。
+
+## 2.4 新增
+
+> **2.4.0 是“把审查报告全部落地”的版本。** 它同时包含原计划的 2.3.2（发布纪律与可判定缺陷）、2.4.0（安全、成本、传话筒、中英、视觉）与 2.5.0 的架构准备（适配器契约、MCP、兼容矩阵）。`npm test` 151/151。
+
+### 发布与工程
+
+- **单一版本源**：`package.json` → `lib/version.js` + `client.js` 的 `CLIENT_VERSION`，由 `node scripts/sync-version.mjs` 生成；`npm test` 先跑 `--check`，漂移即失败（P1-a / S20）。面板只在 Host 与面板版本**不一致**时显示 `Host x.y.z`，一致时只显示一个版本号。
+- **包身份与会话**：包名改为 `@leica-shen/dsh-group-chat`；补 `peerDependencies`（5 个官方包，全部 optional，避免 profile 内重复运行时）；`files` 收窄，不再把 `.github` 与 `REVIEW-RESPONSE.md` 打进发布包。
+- **README/文档口径**：测试数、版本、截图宽度、验证状态全部对齐；新增 `scripts/check-docs.mjs` 在 CI 比对 README 的数字与真实测试数/版本。
+- **UI 契约测试**：`test/css-regression` + `test/client-2.4` 把“消息区不可压缩、成员区可滚动、单版本、双语键一一对应”写成断言（S21 的可执行部分）。
+
+### 可判定缺陷（原 2.3.2）
+
+- **发送不再阻塞 30 秒**（F1）：面板先乐观插入自己的消息，投递结果回填；并发投递有闸门（默认 2），排队上限 32。
+- **`pendingTimeoutMs` 真正生效**（F2）：运行期 15 秒定时对账，超时才标“未确认”；重启只对超龄行对账，不再一秒内把所有 pending 变成未知。
+- **计数与列表一致**（F4）：人类成员单列一行（`你（面板）`），标题计数、列表行、成员区使用同一 `members.length`。
+- **截断可解释**（F5）：标题显示“最近 20 / 共 62 条”，正文给“加载更早”，不再让用户以为消息丢了。
+- **消息上限统一**（F6）：发送 2000（可配）、存储容忍 8000、笔记/决定 1000，并在 UI 标注；不再出现三套互不相干的口径。
+- **错误不再被轮询清空**（F12）：错误保留到用户关闭；成功提示 4.5 秒自动消失。
+- **目标菜单不再被裁切**（F13）：固定定位 + 空间不足时向上翻转 + 方向键/Home/End/Esc；超限的 `*` 改为“可点开确认”，不再是点不动的灰按钮。
+- **审计弹窗不再迟到**（F20）：没有群时不打开；有群时才拉取。
+- **输入框语义修正**（F21）：`aria-label` 改为“消息内容”；菜单有键盘交互（F22）。
+- **页面隐藏时也会刷新**（#29）：`visibilitychange` 立即补拉，切回标签页不再等 8 秒/60 秒。
+- **删除需要显式确认**（F29）：模型工具 `delete` 必须 `confirm: true`；面板走二次确认。
+- **单进程锁**（F24，可选）：`lockFile: true` 时在数据文件旁写 advisory lock；活进程占用则只读。
+
+### 安全、成本与隐私（S1–S19）
+
+- **真实用量回流**（S1）：适配器若返回 usage/tokens，记入账本并在设置页显示“估算 / 实际”。
+- **广播预演**（S2）：`*` 或超限目标先显示收件人与预计 tokens，确认后才发；人类确认的广播可超过单条 fan-out 上限，但受 `maxBroadcastRecipients` 与每日广播额度约束。
+- **分级预算**（S3）：人类与 Agent 的消息额度分开（30 vs 120）；广播另有每日上限。
+- **紧凑 policy**（S4）：默认 `auto`，1–3 个群用详细版，更多群每条一行，上限 3500 字符。
+- **信息流标签**（S6）：消息带 `taint: human-typed | human-pasted | peer | tool`；粘贴内容在信封里明确标为不可信，模型不能把它当授权。
+- **机密扫描**（S8）：私钥、AWS/GitHub/Slack/Google/Stripe/OpenAI 形态、JWT、高熵串在发送前拦截；人类可在面板明确确认后发送，模型工具永远不能绕过。
+- **委派白名单**（S7）：`delegationReadOnly: true` 时子代理拿不到写/网络类工具，且永远没有群工具。
+- **并发闸 + 急停**（S10–S12）：`maxConcurrentDeliveries`；`/group pause [群|*]`、面板“暂停群聊/暂停全部群聊”；暂停期只记录不唤醒，恢复即用。
+- **结构化拒绝**（S13）：错误返回 `{code, message, messageEn, retryAfterMs, suggestion}`，policy 教模型“被拒后按建议做，不要立刻重试”。
+- **异常可见**（S14/S22）：设置页显示发送、投递、失败、拒绝原因、估算/实际 token、p50/p95 投递延迟。
+- **群级敏感度**（S15）：`public | internal | secret`；secret 群只能由人类面板发送，禁止模型发送、建群与委派。
+- **保留期与脱敏**（S16/S18）：`retentionDays: 30` 只裁剪聊天行，审计事实保留；单条消息可 redact（保留 sha256 与审计）；导出默认脱敏路径、邮箱、凭据形态。
+- **可见范围**（S17）：`memberHistoryScope: own` 可让成员只读自己发出/被点名的行；默认 `all` 保持兼容。
+- **不泄露他人会话**（S19）：policy 与 `group_talk_list` 只用别名与角色，不写其他会话标题。
+
+### 传话筒（S23）
+
+- 新增 `group_talk_relay` / `group_talk_relay_reply` 与 `/group relay @别名 <消息>`；点对点、默认 1 轮、TTL 10 分钟、真实定时器超时、结果原路回到发起会话，**不写入任何群 transcript**。
+- 五条红线在 Host 硬编码：禁止链式、只允许 `confirm|ask|handoff`、拒收“忽略规则/调用工具/批准预算”类指令、禁止自动外发、面板可见且可 `/group relay pause` 一键暂停。
+- 面板成员行新增“向 @x 确认”；“传话记录”区显示状态、轮次与最后一轮摘要；导出包含脱敏传话记录。
+
+### 中英切换与角色去语言化（S29）
+
+- 面板三态：跟随宿主 / 中文 / English，存 `localStorage`；API 带 `lang`，Host 错误、建议、命令错误都双语。
+- 成员新增稳定 `roleId`；`#角色` 同时匹配 roleId、当前标签与两种预设译名，换语言后仍能路由；旧数据在载入时自动补齐 roleId。
+- 时间统一 `HH:mm` + 粘性日期分隔（今天/昨天/MM-DD），审计用完整时间戳；英文 12 小时制不再出现在中文界面。
+- 系统行、宿主错误、`/group` 输出（`commandLang: zh`）不再只有英文；群消息徽章随界面语言。
+
+### 视觉与布局（S30）
+
+- 消息区恢复为主角：成员区默认收起（展开仍在页内，可滚动）；单工具栏；“…更多”收纳重命名/主题/敏感度/暂停/导出/设置/删除，危险操作不再贴着发送框。
+- 元信息 12px、正文 13px/21px、头像首字母、同发送者 5 分钟内合并、所有消息可复制、链接识别 + 外链确认、长消息折叠保持滚动位置。
+- 未读用琥珀而不是主题蓝；“红点”真的接近红；版本横幅用信息色而非错误色；`prefers-reduced-motion` 生效。
+- 群 ID 折叠可复制；群列表可搜索、可静音、可隐藏、可“全部已读”。
+
+### 架构与生态（S24–S28）
+
+- 抽出 `lib/adapters.js`：`capabilities / listSessions / prompt / startSubagent` 四个契约；DSH 适配器保持零回归，另有 mailbox 适配器给 Codex/Aider 这类“不能注入回合”的宿主（老实标“收件箱模式”）。
+- `bin/mcp-server.mjs` 用同一份 store 暴露 MCP 工具（list/send/history/note/relay），给非 DSH 宿主复用；`COMPATIBILITY.md` 给出 8 家宿主矩阵与降级口径。
+- `DESIGN.md` 增加数据流、适配器、relay 状态机与威胁模型；`ADAPTERS.md` 是接入指南。
+
+### 仍然不做（明确写清）
+
+- 不支持附件、图片、语音；消息仍是纯文本 + 引用 `refs`。
+- 不做端到端加密；at-rest 只有 0600 + 可选 lock + 脱敏导出。
+- 不是多租户边界；同一 OS 用户的插件都在同一信任域。
+- “已读”是推导值（目标后来在群里发过言），不是强一致回执；需要精确回执请用 relay。
+- 多进程同时写同一 `dataFile` 仍不保证；默认的 advisory lock 只能把第二个进程变成只读。
 
 ## 2.3 新增
 
@@ -109,7 +186,7 @@
 dsh plugin --profile desktop add github:Leica-Shen/deepseek-harness-group-chat
 ```
 
-装好后在 profile 的 `dsh.profile.bundles` 中确认出现 `@local/group-talk-l`，然后重启一次 Harness。
+装好后在 profile 的 `dsh.profile.bundles` 中确认出现 `@leica-shen/dsh-group-chat`，然后重启一次 Harness。
 
 ### 方式二：克隆后用 link 安装
 
@@ -124,14 +201,14 @@ dsh plugin --profile desktop add link:"$PWD"
 ```json
 {
   "dependencies": {
-    "@local/group-talk-l": "link:/absolute/path/to/group-talk-l"
+    "@leica-shen/dsh-group-chat": "link:/absolute/path/to/group-talk-l"
   },
   "dsh": {
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "@local/group-talk-l"
+        "@leica-shen/dsh-group-chat"
       ]
     }
   }
@@ -139,6 +216,8 @@ dsh plugin --profile desktop add link:"$PWD"
 ```
 
 刷新 Web 页面。Client 半通过 `/client` export 进入 boot graph。
+
+> **从 2.3 升级：** 包名从 `@local/group-talk-l` 改为 `@leica-shen/dsh-group-chat`。插件 id、数据目录（`$DSH_HOME/group-talk-l/`）和面板入口都不变；把 profile 的依赖键与 `dsh.profile.bundles` 换成新包名，重建一次 link，再重启即可。
 
 > **安装后必须重启一次 Harness。** Host 插件模块在进程内缓存，`plugin_manager` 对本地 link 更新的应用阶段会显示 `restart-required`；仅刷新页面不会替换 Host 模块。
 
@@ -150,7 +229,7 @@ cd ~/.dsh/profiles/desktop
 pnpm add link:"$PLUGIN_DIR"
 ```
 
-把 `@local/group-talk-l` 加入 `dsh.profile.bundles`，重启 Harness 或刷新页面。
+把 `@leica-shen/dsh-group-chat` 加入 `dsh.profile.bundles`，重启 Harness 或刷新页面。
 
 ## 使用
 
@@ -282,6 +361,8 @@ total     = perTarget × recipientCount
 - 角色只是路由与职责标签，不是权限；organizer/owner 的豁免用精确角色匹配；
 - 笔记限速 10/分、50/天；控制行不占聊天缓冲；
 - 子代理会话不允许入群；
+- 传话默认 1 轮、TTL 10 分钟，且不能代替人类做授权/付款/删除决定；
+- secret 群只是 Host 侧策略，不是端到端加密；
 - 参与者可以用 `@human` 把回答写入房间（in-room，仅面板可见、不唤醒会话）；人类自己发 `/group @human` 是 self-target，会被拒绝。
 - 不是多租户安全边界：已安装的 Host/Client 插件与同源脚本共享同一信任域。
 
@@ -341,15 +422,20 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `humanBypassTargetCaps` | `true` | bool | 人类消息是否绕过 target 日上限/burst；群、Host、sender 预算与 sender 冷却仍生效 |
 | `historyLimit` | `100` | 20–500 | 每群保留记录条数 |
 | `maxGroupsPerSession` | `5` | 1–50 | 每个成员最多活跃群数 |
-| `maxGroupsTotal` | `32` | 1–500 | Host 级群记录上限（含解散） |
+| `maxGroupsTotal` | `32` | 1–500 | Host 级**活跃**群上限；解散群不占名额（保留期负责清理） |
 | `maxMembersPerGroup` | `16` | 1–64 | 每群成员上限（含人类操作者 `@human`） |
-| `policyRecentMessages` | `0` | 0–10 | prompt 注入最近记录条数；默认关闭以降低注入面 |
+| `policyRecentMessages` | `3` | 0–10 | prompt 注入最近记录条数；默认 3 行给成员最基本的上下文 |
 | `policyMaxChars` | `3500` | 800–20000 | prompt section 字符硬上限 |
 | `deliveryMode` | `queue` | steer/queue | `ambient` 的投递模式；默认 `queue` 等目标完成当前回合，设为 `steer` 可让 ambient 也插到下一个 step 边界（`urgent` 始终 steer，除非显式 `mode`） |
 | `maxMessageChars` | `2000` | 100–8000 | 单条消息字符上限；8000 是硬上限 |
 | `maxRecipientsPerSend` | `6` | 1–64 | 单次 fan-out 上限 |
-| `sendCooldownMs` | `3000` | 0–600000 | 发送者全局冷却 |
-| `dedupeWindowMs` | `30000` | 0–3600000 | 重复抑制窗口 |
+| `sendCooldownMs` | `3000` | 0–600000 | Agent 发送者全局冷却 |
+| `humanCooldownMs` | `0` | 0–600000 | 人类发送者冷却；面板已有 busy 态，默认不拦连续发言 |
+| `maxBroadcastRecipients` | `16` | 1–64 | 人类确认后的广播收件上限 |
+| `dailyMessagesPerHuman` | `120` | 1–100000 | 人类每日消息额度（与 Agent 的 30 分开） |
+| `dailyBroadcastsPerSender` | `6` | 0–1000 | 每日广播型发送上限 |
+| `maxBroadcastsPerGroupPerHour` | `12` | 1–1000 | 单群每小时广播上限；超过则自动暂停该群（熔断） |
+| `dedupeWindowMs` | `8000` | 0–3600000 | 重复抑制窗口；人类面板豁免，避免吞掉正常的重复发言 |
 | `burstWindowMs` | `60000` | 0–3600000 | 滑动窗口长度；0 关闭突发保护 |
 | `maxMessagesPerSenderPerBurst` | `8` | 1–1000 | 单发送者窗口内消息数 |
 | `maxMessagesPerGroupPerBurst` | `12` | 1–1000 | 单群窗口内消息数 |
@@ -373,7 +459,20 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `maxHistoryToolChars` | `12000` | 1000–200000 | 工具历史输出上限 |
 | `maxReadsPerAgentPerMinute` | `20` | 1–1000 | 模型每 Agent 每分钟读取工具上限，防止 history/list 循环烧 Token |
 | `replyNudgeAfterMs` | `120000` | 10000–86400000 | 等待多久后显示「催一下」 |
-| `pendingTimeoutMs` | `120000` | 10000–86400000 | 启动时将超时 pending 标为未确认 |
+| `pendingTimeoutMs` | `120000` | 10000–86400000 | pending 超过该时长由运行期定时器标为未确认 |
+| `maxConcurrentDeliveries` | `2` | 1–16 | 同时在途的投递上限（S10 并发闸） |
+| `deliveryQueueLimit` | `32` | 1–512 | 投递等待队列上限；超限返回可重试的结构化拒绝 |
+| `retentionDays` | `30` | 0–3650 | 聊天行保留天数；0 永久保留；审计行不裁剪 |
+| `allowRelay` | `true` | bool | 点对点传话筒 |
+| `relayTtlMs` | `600000` | 60000–1800000 | 传话超时 |
+| `relayPairPerHour` | `6` | 1–60 | 同一对会话每小时传话上限 |
+| `secretScan` | `true` | bool | 发送前凭据扫描 |
+| `defaultSensitivity` | `internal` | enum | 新群默认敏感度 |
+| `memberHistoryScope` | `all` | all/own | 成员历史可见范围 |
+| `delegationReadOnly` | `true` | bool | 委派子代理只给只读工具 |
+| `lockFile` | `true` | bool | 数据文件 advisory lock |
+| `policyCompact` | `auto` | auto/always/never | 群聊说明压缩策略 |
+| `commandLang` | `zh` | en/zh | `/group` 输出语言；中文为默认 |
 | `uiMessageLimit` | `20` | 1–100 | Web 每群返回消息数 |
 
 调高任何预算前，请先读 [SECURITY.md](SECURITY.md)。
@@ -407,7 +506,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-101 个测试覆盖：
+151 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -419,12 +518,13 @@ node --test test/*.test.mjs
 - **防护实验**：fan-out、冷却、去重、发送者/目标/群预算、Token 预算、群膨胀、prompt 上限、Web/历史输出上限、账本持久化；
 - **2.1 安全**：人类优先绕过目标上限、秘书/组织者/安全主管门禁、委派角色/深度/工具过滤/超时/配额/结果截断/`dispose`、control 行注入边界；
 - **2.3 回归**：HTTP human-only/Origin、ambient=queue/urgent=steer、service 级 purpose 门禁与精确角色、人类不再消耗 target 账本、CJK Token 估算、笔记限速/日配额、audit 按需、list 输出上限、lossy store 拒写、8,000 字硬上限、重复挂载。
+- **2.4 新增**：版本单一源与文档口径、机密扫描/粘贴 taint、广播确认与每日广播额度、暂停/急停、读回执、secret 群、并发闸、保留期/redact、传话筒全链路（超时/轮次/红线/配对限速/暂停）、双语目录与角色去语言化、ETag/分页/CSRF、文件锁与同名群。
 
-## 验证状态（2.3.0）
+## 验证状态（2.4.0）
 
 自动化验证（源码，本机）：
 
-- `node --test test/*.test.mjs`：**101/101**；
+- `npm test`：**151/151**（先跑版本一致性检查）；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
@@ -432,9 +532,9 @@ node --test test/*.test.mjs
 
 尚未验证：
 
-- 源码/测试已是 2.3.0；live Host 需要重启一次才会加载 2.3 Host 半。本轮未做 2.3 的实机视觉重走查，2.2 的 980 宽截图仍可作为布局参考；
+- 源码/测试已是 2.4.0；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
 - 子代理委派的真实 provider 仍需要在本机 Harness 重启后、由组织者会话实际执行一次；当前测试使用 fake provider 验证权限、审计、超时与 `dispose`；这是 **实验能力**，默认关闭；
-- 跨进程删群窗口、真实多 Host 锁仍不在单进程 store 的保证内；同一 `dataFile` 的重复挂载会被忽略；
+- 跨进程删群窗口仍不在保证内；`lockFile` 只能把第二个进程变成只读，不做分布式协调；同一 `dataFile` 的重复挂载会被忽略；
 - store 载入时若发现丢失成员/群，会转为只读并返回 503，需人工修复或移走文件；
 
 历史（1.4.x）：桌面自检曾验证页头按钮、侧栏图标、真实双向投递与 `steer`，并修复了 10 个真实问题（AbortSignal、`subagent: null`、`pointer-events`、默认 `queue`、`group_talk_list` JSON、sessionId 泄露、target burst 并发、模型建群门禁、读取限速、群消息徽标）。这些结论对 1.4.x 有效，但不再描述 2.0.0 的整屏面板。
@@ -447,9 +547,11 @@ node --test test/*.test.mjs
 - 群消息是 peer content，prompt 明确标注 untrusted，但无法从模型层面 100% 阻止提示注入；
 - 群状态是 Host 级共享数据，不是端到端加密；不要发送凭据；
 - 子代理会话不允许入群；
-- 未读只在本机（`localStorage`），没有跨设备同步，也没有给其他参与者的已读回执；无实时推送；
+- 传话默认 1 轮、TTL 10 分钟，且不能代替人类做授权/付款/删除决定；
+- secret 群只是 Host 侧策略，不是端到端加密；
+- 未读只在本机（`localStorage`），没有跨设备同步；“已读”是推导值（目标后来在群里发过言），不是强一致回执；无实时推送；
 - 进程内串行化，多个 Host 进程同时写同一个 `dataFile` 不受跨进程锁保护；
-- 每日预算按 UTC 重置；跨时区团队需注意边界；
+- 每日预算按**本地**零点重置；跨时区团队以 Host 所在时区为准；
 - 不是多租户安全边界：已安装的 Host/Client 插件、同源脚本都在同一信任域；Web 路由只代表人类操作者；
 - 面板 8 秒轮询、侧栏入口 60 秒未读轮询，最多约 8/60 秒显示延迟；面板与 `/group` 都是全局的，不绑定当前会话。
 
@@ -467,12 +569,25 @@ group-talk-l/
     service.js           领域服务：成员、权限、投递、transcript
     store.js             校验、原子 JSON、usage 账本、损坏恢复
     policy.js            prompt / envelope / help / history 呈现
-    command.js           /group 解析与人类回执
+    command.js           /group 解析与人类回执（双语）
+    i18n.js              宿主错误目录（en/zh）+ 结构化拒绝
+    roles.js             角色预设与 roleId 路由
+    relay.js             传话筒状态机与五条红线
+    adapters.js          Host 适配器契约（DSH / mailbox）
+    metrics.js           运行统计（S22）
+    secrets.js           凭据扫描与脱敏导出
+    version.js           由 package.json 生成的版本常量
     client.js            整屏群聊 panel + sidebar.panellist 入口 + 弹窗组件
+  bin/mcp-server.mjs     MCP 适配（非 DSH 宿主）
   test/                  Node 原生测试
   README.md
   DESIGN.md
   SECURITY.md
+  COMPATIBILITY.md
+  ADAPTERS.md
+  docs/UI-ACCEPTANCE.md
+  scripts/sync-version.mjs
+  scripts/check-docs.mjs
 ```
 
 
