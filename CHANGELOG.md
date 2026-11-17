@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.4.1
+
+A small hardening patch on top of 2.4.0, found in the post-push review.
+
+- **Relay replies are charged** to the sender/room/Host ledger; they still skip
+  the origin's per-target delivery cap so a reply the origin asked for is not
+  blocked by its own budget.
+- **A malformed relay row no longer turns the whole store read-only.** Relays
+  are transient coordination state; dropping one is logged, not treated as a
+  lossy room document.
+- **Mailbox hosts do not gate membership on mailbox existence.** A not-yet-created
+  inbox is a new member, not a missing session.
+- **Read-only stores stop the maintenance pass early** instead of logging a failed
+  write every 15 seconds.
+- **Ambiguous group references name the candidates** in both languages.
+
+Tests: 151/151.
+
 ## 2.4.0
 
 The full external-review release: the 2.3.2 release-discipline fixes, the 2.4.0

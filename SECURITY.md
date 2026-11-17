@@ -358,7 +358,7 @@ Group-Talk-L 的每个群消息都可能：
 - 群聊入口是原生 `sidebar.panellist` / `main` slot，不依赖宿主类名；仅会话内徽标仍是 DOM 装饰，上游改版时可能安全消失；
 - 其余残余风险见第 6 节。
 
-当前结论：**2.4.0 的版本纪律、凭据扫描/taint、广播确认、暂停/急停、并发闸、secret 群、保留期/redact、读回执、传话筒全链路、双语与 ETag/CSRF 均有自动化测试；`docs/screenshots/*.jpg` 仍是 2.2 时代的 1200×777 实机证据，只能作布局参考。源码 2.4.0 需要重启 Harness 才会成为 live Host；真实子代理 provider 仍需由 organizer 实跑一次。**
+当前结论：**2.4.1 的版本纪律、凭据扫描/taint、广播确认、暂停/急停、并发闸、secret 群、保留期/redact、读回执、传话筒全链路、双语与 ETag/CSRF 均有自动化测试；`docs/screenshots/*.jpg` 仍是 2.2 时代的 1200×777 实机证据，只能作布局参考。源码 2.4.1 需要重启 Harness 才会成为 live Host；真实子代理 provider 仍需由 organizer 实跑一次。**
 ## 9.5 子代理委派安全（2.1）
 
 委派把“一个群消息”升级成“一个可以调用工具的子 Agent”，因此按高风险能力处理。

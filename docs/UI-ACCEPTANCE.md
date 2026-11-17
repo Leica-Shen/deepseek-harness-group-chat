@@ -88,8 +88,8 @@ AppleScript):
 ```bash
 node scripts/evidence.mjs \
   --dir ../评审证据/ui-2.4 \
-  --screenshot 1280-100-host2.4.0-client2.4.0.png \
-  --host 2.4.0 \
+  --screenshot 1280-100-host2.4.1-client2.4.1.png \
+  --host 2.4.1 \
   --window 1280 \
   --zoom 1 \
   --capabilities '{"audit":true,"pause":true,"relay":true,"secretScan":true}' \
