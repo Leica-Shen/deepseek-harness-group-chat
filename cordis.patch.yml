@@ -113,6 +113,10 @@
         # Pending deliveries become "unconfirmed" after this (real timer, not startup-only).
         pendingTimeoutMs: 120000
         replyNudgeAfterMs: 120000
+        # off | soft | strict. soft names a reply owner; strict also rejects
+        # other members' messages while the turn is open (corrections allowed).
+        turnMode: soft
+        turnTimeoutMs: 900000
         # Model-facing history and Web panel bounds.
         maxHistoryToolChars: 12000
         maxReadsPerAgentPerMinute: 20

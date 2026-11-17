@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.8
+
+- **Optional strict turn-taking.** A `*`/multi-recipient send opens a turn with a
+  reply owner. `turnMode: soft` (default) only names the owner; `strict` also
+  rejects other members' group messages while the turn is open, except
+  `purpose=correct|anomaly|blocked` (organizers/human are exempt). The turn
+  closes when the owner or the human answers, expires after `turnTimeoutMs`
+  (15 min), and is cleared when its owner leaves.
+- The panel shows `Turn owner @alias`, and the member prompt includes the same
+  line, so the model sees the turn even without reading history.
+
+Tests: 157/157.
+
 ## 2.4.7
 
 - **Release artifacts and checksum (S20).** The tag-driven release workflow now

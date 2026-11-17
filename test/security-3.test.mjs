@@ -281,3 +281,44 @@ test('a wide broadcast names one reply owner (organizer first)', async () => {
   assert.match(envelope, /"replyOwner":"bob"/u)
   assert.match(envelope, /Reply owner for this broadcast: @bob/u)
 })
+
+test('strict turn ownership gates other members and closes when the owner answers', async () => {
+  const { service, store, group } = await harness({ turnMode: 'strict', maxRecipientsPerSend: 1 })
+  const broadcast = await service.send('human', { group: group.id, target: '*', message: 'status?', purpose: 'question', broadcast: true })
+  const ownerAlias = broadcast.message.replyOwner
+  assert.ok(ownerAlias)
+  assert.equal(store.state.groups[group.id].turn.alias, ownerAlias)
+  const byAlias = { alice: 's-a', bob: 's-b', carol: 's-c' }
+  const ownerSession = byAlias[ownerAlias]
+  const otherAlias = Object.keys(byAlias).find((alias) => alias !== ownerAlias)
+  const otherSession = byAlias[otherAlias]
+
+  const thirdAlias = Object.keys(byAlias).find((alias) => alias !== ownerAlias && alias !== otherAlias)
+  const thirdSession = byAlias[thirdAlias]
+  await assert.rejects(
+    service.send(otherSession, { group: group.id, target: `@${thirdAlias}`, message: 'me too' }),
+    (error) => error.code === 'turn-owned' && error.params.alias === ownerAlias,
+  )
+  // A correction/anomaly/blocked purpose may interrupt.
+  const correction = await service.send(otherSession, { group: group.id, target: `@${thirdAlias}`, message: 'correction', purpose: 'correct' })
+  assert.equal(correction.deliveries[0].status, 'delivered')
+
+  const answer = await service.send(ownerSession, { group: group.id, target: '@human', message: 'answered' })
+  assert.equal(answer.deliveries[0].status, 'in-room')
+  assert.equal(store.state.groups[group.id].turn, undefined)
+
+  // Expiry is a runtime maintenance concern, not a permanent lock.
+  const again = await service.send('human', { group: group.id, target: '*', message: 'again?', purpose: 'question', broadcast: true })
+  assert.ok(again.message.replyOwner)
+  await store.write((draft) => { draft.groups[group.id].turn.openedAt = Date.now() - 20 * 60 * 1000 })
+  await service.tick()
+  assert.equal(store.state.groups[group.id].turn, undefined)
+})
+
+test('soft turn mode keeps the reply-owner hint but does not reject peers', async () => {
+  const { service, store, group } = await harness({ turnMode: 'soft', maxRecipientsPerSend: 1 })
+  await service.send('human', { group: group.id, target: '*', message: 'status?', purpose: 'question', broadcast: true })
+  assert.ok(store.state.groups[group.id].turn)
+  const sent = await service.send('s-c', { group: group.id, target: '@human', message: 'also here' })
+  assert.equal(sent.deliveries[0].status, 'in-room')
+})

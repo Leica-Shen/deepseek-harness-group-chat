@@ -1,6 +1,6 @@
 # 群聊 Group-Chat · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **155 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **157 tests** · DeepSeek Harness Host + Web Client plugin
 
 把 **已经开着的 AI 会话** 拉进一个群，像同事协作一样分工、对话、互相复核。每个会话保留自己的上下文、模型和工作区，**不合并上下文，也不打断正在跑的任务**。
 
@@ -10,6 +10,8 @@
 
 ## 2.4 新增
 
+> **2.4.8（补丁）：** 可选严格回合：`*`/多收件人发送打开一个回合并指定主答；`turnMode: strict` 时其他成员的主群消息会被 Host 拒绝（纠错/异常/阻塞除外），主答或人类回复后关闭，15 分钟超时自动释放，主答离开时清理；面板与成员 prompt 都显示“本轮主答”。
+>
 > **2.4.7（补丁）：** Release 工作流同时产出 `npm pack` 的 tarball 与 `SHA256SUMS`，作为 GitHub Release 附件；下载可校验，不再只靠仓库状态。
 >
 > **2.4.6（补丁）：** 广播/多收件人发送会指定一位“主答”（优先组织者/群主，否则第一个会话成员）；信封带 `replyOwner` 与中英提示，其他成员除纠错外保持沉默，面板显示“主答 @x”。
@@ -24,7 +26,7 @@
 >
 > **2.4.1（补丁）：** 传话回复计入预算、坏 relay 不再让整个 store 只读、mailbox 宿主不再把“未创建的收件箱”当失效会话、只读 store 不再每 15 秒刷失败日志、歧义群名给出候选。
 >
-> **2.4.0 是“把审查报告全部落地”的版本。** 它同时包含原计划的 2.3.2（发布纪律与可判定缺陷）、2.4.0（安全、成本、传话筒、中英、视觉）与 2.5.0 的架构准备（适配器契约、MCP、兼容矩阵）。`npm test` 155/155。
+> **2.4.0 是“把审查报告全部落地”的版本。** 它同时包含原计划的 2.3.2（发布纪律与可判定缺陷）、2.4.0（安全、成本、传话筒、中英、视觉）与 2.5.0 的架构准备（适配器契约、MCP、兼容矩阵）。`npm test` 157/157。
 
 ### 发布与工程
 
@@ -473,6 +475,8 @@ Group-Talk-L 把“一个群消息会唤醒多少模型 turn”当作主要成�
 | `maxHistoryToolChars` | `12000` | 1000–200000 | 工具历史输出上限 |
 | `maxReadsPerAgentPerMinute` | `20` | 1–1000 | 模型每 Agent 每分钟读取工具上限，防止 history/list 循环烧 Token |
 | `replyNudgeAfterMs` | `120000` | 10000–86400000 | 等待多久后显示「催一下」 |
+| `turnMode` | `soft` | off/soft/strict | 广播主答：`soft` 只提示，`strict` 会拒绝非主答的插话（纠错/异常/阻塞除外） |
+| `turnTimeoutMs` | `900000` | 60000–86400000 | 回合超时后自动释放主答 |
 | `pendingTimeoutMs` | `120000` | 10000–86400000 | pending 超过该时长由运行期定时器标为未确认 |
 | `maxConcurrentDeliveries` | `2` | 1–16 | 同时在途的投递上限（S10 并发闸） |
 | `deliveryQueueLimit` | `32` | 1–512 | 投递等待队列上限；超限返回可重试的结构化拒绝 |
@@ -520,7 +524,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-155 个测试覆盖：
+157 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -534,11 +538,11 @@ node --test test/*.test.mjs
 - **2.3 回归**：HTTP human-only/Origin、ambient=queue/urgent=steer、service 级 purpose 门禁与精确角色、人类不再消耗 target 账本、CJK Token 估算、笔记限速/日配额、audit 按需、list 输出上限、lossy store 拒写、8,000 字硬上限、重复挂载。
 - **2.4 新增**：版本单一源与文档口径、机密扫描/粘贴 taint、广播确认与每日广播额度、暂停/急停、读回执、secret 群、并发闸、保留期/redact、传话筒全链路（超时/轮次/红线/配对限速/暂停）、双语目录与角色去语言化、ETag/分页/CSRF、文件锁与同名群。
 
-## 验证状态（2.4.7）
+## 验证状态（2.4.8）
 
 自动化验证（源码，本机）：
 
-- `npm test`：**155/155**（先跑版本一致性检查）；
+- `npm test`：**157/157**（先跑版本一致性检查）；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
@@ -546,7 +550,7 @@ node --test test/*.test.mjs
 
 尚未验证：
 
-- 源码/测试已是 2.4.7；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
+- 源码/测试已是 2.4.8；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
 - 子代理委派的真实 provider 仍需要在本机 Harness 重启后、由组织者会话实际执行一次；当前测试使用 fake provider 验证权限、审计、超时与 `dispose`；这是 **实验能力**，默认关闭；
 - 跨进程删群窗口仍不在保证内；`lockFile` 只能把第二个进程变成只读，不做分布式协调；同一 `dataFile` 的重复挂载会被忽略；
 - store 载入时若发现丢失成员/群，会转为只读并返回 503，需人工修复或移走文件；
