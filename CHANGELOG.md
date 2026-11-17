@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.5
+
+- **Release automation.** `.github/workflows/release.yml` creates the GitHub
+  Release from the tag with the workflow token (`contents: write`), so publishing
+  no longer depends on a local `gh`/token. It is idempotent and uses
+  `docs/release-notes/<tag>.md`.
+- Release notes for this tag live in `docs/release-notes/v2.4.5.md`.
+
+Tests: 154/154 (no runtime change).
+
 ## 2.4.4
 
 Closing the remaining small review gaps.

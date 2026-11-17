@@ -6,6 +6,10 @@ Group-Chat (package `@leica-shen/dsh-group-chat`, plugin id `group-talk-l`) lets
 
 Route with `@alias`, `#role` or `*`. The person is `@human` and is in the room, not impersonated by a session. The product goal is not "one more chat UI": it is cross-session coordination that stays bounded when messages fan out, models loop, credentials leak or a room becomes noisy.
 
+## 2.4.5 (patch)
+
+The repository now creates its own GitHub Release from a tag via an Actions workflow with `contents: write`; it is idempotent and reads `docs/release-notes/<tag>.md`, so no local `gh`/token is needed.
+
 ## 2.4.4 (patch)
 
 Relay accepts `refs`; a local round digest lists decisions, waiting, failures, open relays and recent messages; the sidebar stops polling after two empty snapshots; GET shrinks the per-room window when the body would exceed 1.2 MB; member/note ceilings are labelled in the UI.
@@ -140,7 +144,7 @@ Coverage includes persistence and corruption recovery, routing and roles, the hu
 
 ## Status
 
-Source is **2.4.4**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
+Source is **2.4.5**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
 
 ## Docs
 
