@@ -1,6 +1,6 @@
 {
   "name": "@leica-shen/dsh-group-chat",
-  "version": "2.4.3",
+  "version": "2.4.4",
   "type": "module",
   "description": "群聊 Group-Chat (Group-Talk-L): a full-area cross-session group chat for DeepSeek Harness. The person talks to existing sessions through @alias, #role or * routing, with role grants, human priority, audited notes and decisions, bounded subagent delegation, one-to-one relay, credential scanning, pause/emergency-stop, per-group sensitivity, dedupe, fan-out caps and daily token budgets. Each session keeps its own context, model and workspace.",
   "icon": "./icon.svg",

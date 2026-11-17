@@ -22,7 +22,7 @@ Add 群聊 Group-Chat (Leica-Shen/deepseek-harness-group-chat)
 - [x] Description states what the plugin does, no superlatives
 - [x] My repo has the dsh-plugin topic
 
-- Version 2.4.3; local `npm test` 152/152; repo CI green.
+- Version 2.4.4; local `npm test` 154/154; repo CI green.
 - Install check: `dsh plugin --profile desktop add github:Leica-Shen/deepseek-harness-group-chat`, then restart Harness once.
 - Feature summary: existing sessions join a room; `@alias` / `#role` / `*` routing; human operator is in-room; audited notes/decisions; bounded subagent delegation; one-to-one relay with five hard-coded red lines; credential scan; broadcast preview; pause/emergency stop; per-group sensitivity; retention/redaction; bilingual panel.
 - Screenshots live in the repo's `screenshots.json` (2.2 evidence, 1200×777); the icon is GitHub-hosted `assets/icon-180.png`. A 2.4 post-restart walk-through is tracked in docs/UI-ACCEPTANCE.md.

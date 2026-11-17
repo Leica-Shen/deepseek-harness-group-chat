@@ -78,3 +78,21 @@ test('the footer shows one version when the halves match and a mismatch note oth
   assert.match(source, /version === CLIENT_VERSION/u)
   assert.match(source, /Group-Talk-L \$\{CLIENT_VERSION\}/u)
 })
+
+test('the digest summarizes decisions, waiting, failures and open relays', () => {
+  const t = internals.makeTranslator(undefined, 'en')
+  const group = {
+    name: 'Review',
+    audit: [{ action: 'decision', fromAlias: 'org', text: 'Ship Friday', at: Date.now() }],
+    messages: [
+      { kind: 'message', at: Date.now(), fromAlias: 'a', target: '@b', text: 'please check', deliveries: [{ sessionId: 'b', status: 'delivered' }] },
+      { kind: 'message', at: Date.now(), fromAlias: 'b', target: '@a', text: 'failed one', deliveries: [{ sessionId: 'a', status: 'failed' }] },
+    ],
+  }
+  const digest = internals.digestOf(group, [{ intent: 'confirm', status: 'delivered', round: 1, maxRounds: 1, peer: { alias: 'b' } }], t)
+  assert.match(digest, /Ship Friday/u)
+  assert.match(digest, /please check/u)
+  assert.match(digest, /failed one/u)
+  assert.match(digest, /confirm @b/u)
+  assert.match(digest, /No decision recorded|Recorded decisions/u)
+})

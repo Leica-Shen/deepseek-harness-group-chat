@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.4.4
+
+Closing the remaining small review gaps.
+
+- **Relay references.** `group_talk_relay` accepts `refs` (file/url/session/…);
+  they travel in the envelope and are credential-scanned, so a peer can look at
+  the artefact instead of receiving a copy.
+- **In-panel digest.** A deterministic "round digest" (no model call) lists
+  today's activity, recorded decisions, waiting deliveries, recent failures,
+  open relays and the latest messages; it can be copied.
+- **Poll and response bounds.** The sidebar stops polling after two empty
+  snapshot passes (the panel still refreshes on demand), and GET halves the
+  per-room window until the JSON body is under 1.2 MB.
+- Small honesty fixes: the member ceiling states that it includes the human, and
+  the composer help states the 1,000-character note/decision cap.
+
+Tests: 154/154.
+
 ## 2.4.3
 
 The last user-facing gap from the review.

@@ -180,3 +180,23 @@ test('the pair rate limit refuses the seventh relay in an hour', async () => {
     (error) => error.code === 'relay-rate',
   )
 })
+
+test('relay references travel with the envelope and stay reference-only', async () => {
+  const { service, prompts } = await harness()
+  const relay = await service.relay('s-a', {
+    to: '@bob',
+    message: 'Please inspect this file.',
+    refs: [{ kind: 'file', value: '/tmp/diff.patch' }],
+  })
+  assert.deepEqual(relay.refs, [{ kind: 'file', value: '/tmp/diff.patch' }])
+  const envelope = prompts.at(-1).content?.[0]?.text ?? prompts.at(-1).text
+  assert.match(envelope, /Reference \(file\): \/tmp\/diff\.patch/u)
+  await assert.rejects(
+    service.relay('s-a', {
+      to: '@bob',
+      message: 'Another',
+      refs: [{ kind: 'url', value: 'https://x.test/?token=AKIAABCDEFGHIJKLMNOP' }],
+    }),
+    (error) => error.code === 'secret-detected',
+  )
+})
