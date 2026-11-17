@@ -6,6 +6,10 @@ Group-Chat (package `@leica-shen/dsh-group-chat`, plugin id `group-talk-l`) lets
 
 Route with `@alias`, `#role` or `*`. The person is `@human` and is in the room, not impersonated by a session. The product goal is not "one more chat UI": it is cross-session coordination that stays bounded when messages fan out, models loop, credentials leak or a room becomes noisy.
 
+## 2.4.7 (patch)
+
+The release workflow attaches the `npm pack` tarball and a `SHA256SUMS` file to the GitHub Release, so a download can be verified without trusting the repository state.
+
 ## 2.4.6 (patch)
 
 A wide send names one reply owner (organizer/owner first, else the first session target); the envelope carries `replyOwner` and a bilingual instruction, other members stay silent unless correcting a factual error, and the row shows a `Reply owner @alias` chip.
@@ -148,7 +152,7 @@ Coverage includes persistence and corruption recovery, routing and roles, the hu
 
 ## Status
 
-Source is **2.4.6**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
+Source is **2.4.7**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
 
 ## Docs
 

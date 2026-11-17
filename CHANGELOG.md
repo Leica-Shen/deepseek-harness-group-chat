@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.4.7
+
+- **Release artifacts and checksum (S20).** The tag-driven release workflow now
+  runs `npm pack`, writes `SHA256SUMS`, and attaches both the tarball and the
+  checksum file to the GitHub Release. A download can be verified without
+  trusting the repository state.
+
+Tests: 155/155 (no runtime change).
+
 ## 2.4.6
 
 - **A wide send names one reply owner.** If the recipients include an

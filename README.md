@@ -10,6 +10,8 @@
 
 ## 2.4 新增
 
+> **2.4.7（补丁）：** Release 工作流同时产出 `npm pack` 的 tarball 与 `SHA256SUMS`，作为 GitHub Release 附件；下载可校验，不再只靠仓库状态。
+>
 > **2.4.6（补丁）：** 广播/多收件人发送会指定一位“主答”（优先组织者/群主，否则第一个会话成员）；信封带 `replyOwner` 与中英提示，其他成员除纠错外保持沉默，面板显示“主答 @x”。
 >
 > **2.4.5（补丁）：** 仓库自带 Release 工作流：推 tag 后由 Actions 用 `GITHUB_TOKEN` 创建 GitHub Release（幂等、notes 取自 `docs/release-notes/<tag>.md`），不再依赖本机 `gh`/token。
@@ -532,7 +534,7 @@ node --test test/*.test.mjs
 - **2.3 回归**：HTTP human-only/Origin、ambient=queue/urgent=steer、service 级 purpose 门禁与精确角色、人类不再消耗 target 账本、CJK Token 估算、笔记限速/日配额、audit 按需、list 输出上限、lossy store 拒写、8,000 字硬上限、重复挂载。
 - **2.4 新增**：版本单一源与文档口径、机密扫描/粘贴 taint、广播确认与每日广播额度、暂停/急停、读回执、secret 群、并发闸、保留期/redact、传话筒全链路（超时/轮次/红线/配对限速/暂停）、双语目录与角色去语言化、ETag/分页/CSRF、文件锁与同名群。
 
-## 验证状态（2.4.6）
+## 验证状态（2.4.7）
 
 自动化验证（源码，本机）：
 
@@ -544,7 +546,7 @@ node --test test/*.test.mjs
 
 尚未验证：
 
-- 源码/测试已是 2.4.6；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
+- 源码/测试已是 2.4.7；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
 - 子代理委派的真实 provider 仍需要在本机 Harness 重启后、由组织者会话实际执行一次；当前测试使用 fake provider 验证权限、审计、超时与 `dispose`；这是 **实验能力**，默认关闭；
 - 跨进程删群窗口仍不在保证内；`lockFile` 只能把第二个进程变成只读，不做分布式协调；同一 `dataFile` 的重复挂载会被忽略；
 - store 载入时若发现丢失成员/群，会转为只读并返回 503，需人工修复或移走文件；

@@ -15,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Package tarball and checksum
+        run: |
+          set -euo pipefail
+          npm pack --ignore-scripts
+          sha256sum ./*.tgz > SHA256SUMS
+          cat SHA256SUMS
       - name: Create Release (idempotent)
         env:
           GH_TOKEN: ${{ github.token }}
@@ -30,7 +36,7 @@ jobs:
             echo "missing $NOTES" >&2
             exit 1
           fi
-          gh release create "$TAG" \
+          gh release create "$TAG" ./*.tgz SHA256SUMS \
             --title "Group-Chat ${TAG#v}" \
             --notes-file "$NOTES" \
             --verify-tag
