@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.4.6
+
+- **A wide send names one reply owner.** If the recipients include an
+  organizer/owner, that member is the designated responder; otherwise the first
+  session target is. The envelope carries `replyOwner` and a bilingual line, and
+  the policy tells other members to stay silent unless correcting a factual
+  error. This reduces the `*` "everyone answers at once" storm (#49/#51).
+- The panel shows a `Reply owner @alias` chip on the row.
+
+Tests: 155/155.
+
 ## 2.4.5
 
 - **Release automation.** `.github/workflows/release.yml` creates the GitHub

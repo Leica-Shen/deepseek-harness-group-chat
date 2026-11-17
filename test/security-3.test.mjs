@@ -270,3 +270,14 @@ test('notes and refs are credential-scanned too', async () => {
   )
   await service.note('human', group.id, 'decision recorded without credentials')
 })
+
+
+test('a wide broadcast names one reply owner (organizer first)', async () => {
+  const { service, prompts } = await harness({ maxRecipientsPerSend: 1 })
+  await service.setRole('human', 'Security room', 'bob', 'Organizer', undefined, 'organizer')
+  const sent = await service.send('human', { group: 'Security room', target: '*', message: 'status?', purpose: 'question', broadcast: true })
+  assert.equal(sent.message.replyOwner, 'bob')
+  const envelope = prompts.at(-1).content?.[0]?.text ?? prompts.at(-1).text
+  assert.match(envelope, /"replyOwner":"bob"/u)
+  assert.match(envelope, /Reply owner for this broadcast: @bob/u)
+})

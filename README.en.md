@@ -1,10 +1,14 @@
 # Group-Chat · Cross-session group chat for DeepSeek Harness
 
-[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **154 tests** · DeepSeek Harness Host + Web Client plugin
+[中文](README.md) · [GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · MIT · **155 tests** · DeepSeek Harness Host + Web Client plugin
 
 Group-Chat (package `@leica-shen/dsh-group-chat`, plugin id `group-talk-l`) lets a person talk to **existing agent sessions** as a group without merging their contexts. Each participant keeps its own conversation, model and workspace; the group is a membership + shared transcript + routing layer, not a new Session.
 
 Route with `@alias`, `#role` or `*`. The person is `@human` and is in the room, not impersonated by a session. The product goal is not "one more chat UI": it is cross-session coordination that stays bounded when messages fan out, models loop, credentials leak or a room becomes noisy.
+
+## 2.4.6 (patch)
+
+A wide send names one reply owner (organizer/owner first, else the first session target); the envelope carries `replyOwner` and a bilingual instruction, other members stay silent unless correcting a factual error, and the row shows a `Reply owner @alias` chip.
 
 ## 2.4.5 (patch)
 
@@ -28,7 +32,7 @@ Relay replies are charged; a malformed relay row no longer makes the store read-
 
 ## What is new in 2.4
 
-2.4 implements the complete external review: the release-discipline fixes planned for 2.3.2, the security/cost/relay work planned for 2.4.0, and the architecture preparation planned for 2.5.0. `npm test` is 154/154.
+2.4 implements the complete external review: the release-discipline fixes planned for 2.3.2, the security/cost/relay work planned for 2.4.0, and the architecture preparation planned for 2.5.0. `npm test` is 155/155.
 
 ### Release and packaging
 
@@ -137,14 +141,14 @@ A group message is untrusted peer content (or explicitly labelled human-pasted c
 
 ```bash
 npm test
-# version check, then 154 tests, 0 failures
+# version check, then 155 tests, 0 failures
 ```
 
 Coverage includes persistence and corruption recovery, routing and roles, the human in-room principal, notes/decisions, delegation bounds, relay (timeout, rounds, red lines, rate limits), credential scanning and taint, broadcast confirmation, pause/resume, read receipts, retention/redaction, concurrency, ETag/pagination/CSRF, file locking, bilingual dictionaries and role routing, plus the 2.3 regressions.
 
 ## Status
 
-Source is **2.4.5**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
+Source is **2.4.6**. The live Host needs one restart to load the 2.4 Host half. The screenshots in `docs/screenshots/` are **2.2 evidence (1200×777)**: they are a layout reference, not a 2.4 acceptance record. Re-run `docs/UI-ACCEPTANCE.md` after restarting. Real-provider delegation still needs one post-restart run by an organizer session; it stays opt-in and is not marketed as stable.
 
 ## Docs
 

@@ -1,6 +1,6 @@
 # 群聊 Group-Chat · 会话群聊
 
-[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **154 tests** · DeepSeek Harness Host + Web Client plugin
+[GitHub](https://github.com/Leica-Shen/deepseek-harness-group-chat) · [English](README.en.md) · [MIT License](LICENSE) · **155 tests** · DeepSeek Harness Host + Web Client plugin
 
 把 **已经开着的 AI 会话** 拉进一个群，像同事协作一样分工、对话、互相复核。每个会话保留自己的上下文、模型和工作区，**不合并上下文，也不打断正在跑的任务**。
 
@@ -10,6 +10,8 @@
 
 ## 2.4 新增
 
+> **2.4.6（补丁）：** 广播/多收件人发送会指定一位“主答”（优先组织者/群主，否则第一个会话成员）；信封带 `replyOwner` 与中英提示，其他成员除纠错外保持沉默，面板显示“主答 @x”。
+>
 > **2.4.5（补丁）：** 仓库自带 Release 工作流：推 tag 后由 Actions 用 `GITHUB_TOKEN` 创建 GitHub Release（幂等、notes 取自 `docs/release-notes/<tag>.md`），不再依赖本机 `gh`/token。
 >
 > **2.4.4（补丁）：** 传话支持 `refs` 引用；面板新增“本轮摘要”（决定/等待/失败/传话/最近消息，纯本地、不花模型 token）；空群停止侧栏轮询；GET 超过 1.2MB 时自动缩小每组窗口；成员上限与笔记字数在界面说明。
@@ -20,7 +22,7 @@
 >
 > **2.4.1（补丁）：** 传话回复计入预算、坏 relay 不再让整个 store 只读、mailbox 宿主不再把“未创建的收件箱”当失效会话、只读 store 不再每 15 秒刷失败日志、歧义群名给出候选。
 >
-> **2.4.0 是“把审查报告全部落地”的版本。** 它同时包含原计划的 2.3.2（发布纪律与可判定缺陷）、2.4.0（安全、成本、传话筒、中英、视觉）与 2.5.0 的架构准备（适配器契约、MCP、兼容矩阵）。`npm test` 154/154。
+> **2.4.0 是“把审查报告全部落地”的版本。** 它同时包含原计划的 2.3.2（发布纪律与可判定缺陷）、2.4.0（安全、成本、传话筒、中英、视觉）与 2.5.0 的架构准备（适配器契约、MCP、兼容矩阵）。`npm test` 155/155。
 
 ### 发布与工程
 
@@ -516,7 +518,7 @@ $DSH_HOME/group-talk-l/groups.json
 node --test test/*.test.mjs
 ```
 
-154 个测试覆盖：
+155 个测试覆盖：
 
 - 状态校验、原子持久化、损坏旁置、usage 账本重载、control 审计行持久化；
 - 目标解析、角色编辑、人类操作者管理、解散/删除；
@@ -530,11 +532,11 @@ node --test test/*.test.mjs
 - **2.3 回归**：HTTP human-only/Origin、ambient=queue/urgent=steer、service 级 purpose 门禁与精确角色、人类不再消耗 target 账本、CJK Token 估算、笔记限速/日配额、audit 按需、list 输出上限、lossy store 拒写、8,000 字硬上限、重复挂载。
 - **2.4 新增**：版本单一源与文档口径、机密扫描/粘贴 taint、广播确认与每日广播额度、暂停/急停、读回执、secret 群、并发闸、保留期/redact、传话筒全链路（超时/轮次/红线/配对限速/暂停）、双语目录与角色去语言化、ETag/分页/CSRF、文件锁与同名群。
 
-## 验证状态（2.4.5）
+## 验证状态（2.4.6）
 
 自动化验证（源码，本机）：
 
-- `npm test`：**154/154**（先跑版本一致性检查）；
+- `npm test`：**155/155**（先跑版本一致性检查）；
 - 人类操作者建群、发送、管理、`@human` in-room 回执与 self-target、legacy 群可被人类管理，均有 service/HTTP 用例；
 - `main`（key `group-talk-l`）与 `sidebar.panellist`（id `group-talk-l`、order 20）注册有 client 用例；
 - 等待推导、未读水位、列表徽标、对账容错均有直接覆盖；
@@ -542,7 +544,7 @@ node --test test/*.test.mjs
 
 尚未验证：
 
-- 源码/测试已是 2.4.5；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
+- 源码/测试已是 2.4.6；live Host 需要重启一次才会加载 2.4 Host 半。**本轮仍未做 2.4 的实机视觉重走查**：`docs/screenshots/*.jpg` 是 2.2 时代的 1200×777 证据，只作布局参考，不能当 2.4 UI 验收；IM/侧栏的真实视觉请在重启后按 `docs/UI-ACCEPTANCE.md` 复跑；
 - 子代理委派的真实 provider 仍需要在本机 Harness 重启后、由组织者会话实际执行一次；当前测试使用 fake provider 验证权限、审计、超时与 `dispose`；这是 **实验能力**，默认关闭；
 - 跨进程删群窗口仍不在保证内；`lockFile` 只能把第二个进程变成只读，不做分布式协调；同一 `dataFile` 的重复挂载会被忽略；
 - store 载入时若发现丢失成员/群，会转为只读并返回 503，需人工修复或移走文件；
