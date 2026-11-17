@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.2
+
+Security tightening found in the same post-push pass.
+
+- **Credential scan covers notes and references.** A durable note/decision is
+  plain text in the audit trail; a `refs` value can carry a token in a query
+  string. Both now go through the same scanner as the message body.
+- **Authorization payloads are rejected for every relay intent**, not only
+  `confirm`: routing "may we approve/pay/delete" through `ask` was a loophole
+  in red line 2.
+
+Tests: 152/152.
+
 ## 2.4.1
 
 A small hardening patch on top of 2.4.0, found in the post-push review.

@@ -252,3 +252,21 @@ test('the broadcast circuit breaker pauses a room that keeps broadcasting', asyn
   assert.equal(held.held, true)
   assert.ok(store.state.groups[group.id].audit.some((row) => row.action === 'pause'))
 })
+
+test('notes and refs are credential-scanned too', async () => {
+  const { service, group } = await harness()
+  await assert.rejects(
+    service.note('human', group.id, 'token ghp_012345678901234567890123456789012345'),
+    (error) => error.code === 'secret-detected',
+  )
+  await assert.rejects(
+    service.send('human', {
+      group: group.id,
+      target: '@bob',
+      message: 'see the link',
+      refs: [{ kind: 'url', value: 'https://example.com/?token=AKIAABCDEFGHIJKLMNOP' }],
+    }),
+    (error) => error.code === 'secret-detected',
+  )
+  await service.note('human', group.id, 'decision recorded without credentials')
+})

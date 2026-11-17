@@ -16,4 +16,4 @@ an unrelated section.
 
 - [UI-ACCEPTANCE.md](UI-ACCEPTANCE.md) — post-restart 2.4 acceptance matrix (layout, truthfulness, interaction, security, evidence).
 - [MARKET-PR.md](MARKET-PR.md) — the exact title/body for the awesome-dsh-plugin PR (the repository cannot update the PR without a token).
-- [RELEASE-2.4.0.md](RELEASE-2.4.0.md) / [RELEASE-2.4.1.md](RELEASE-2.4.1.md) — release notes, tag commands and the GitHub Release body.
+- [RELEASE-2.4.0.md](RELEASE-2.4.0.md) / [RELEASE-2.4.1.md](RELEASE-2.4.1.md) / [RELEASE-2.4.2.md](RELEASE-2.4.2.md) — release notes, tag commands and the GitHub Release body.
